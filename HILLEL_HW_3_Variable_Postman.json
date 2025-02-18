@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "cfa4f651-5ed9-45c1-b536-93896d2acbc9",
+		"_postman_id": "9a19f6fa-a738-47b9-926b-5ec75f885f50",
 		"name": "HILLEL_HW_3_Variable_Postman",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -14,14 +14,24 @@
 						"exec": [
 							"let jsonData = pm.response.json();",
 							"",
+							"// Перевірка статусу відповіді",
 							"pm.test(\"User successfully registered\", function () {",
 							"    pm.expect(pm.response.code).to.equal(201);",
 							"});",
 							"",
-							"// Збираємо userId у змінну колекції",
+							"// Збереження даних користувача у змінні Postman",
 							"pm.collectionVariables.set(\"userId\", jsonData.data.userId);",
-							"",
-							"console.log(\"Registered User ID:\", jsonData.data.userId);"
+							"pm.collectionVariables.set(\"name\", jsonData.data.name || \"John\"); ",
+							"pm.collectionVariables.set(\"lastName\", jsonData.data.lastName || \"Doee\");"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
 						],
 						"type": "text/javascript"
 					}
@@ -63,10 +73,19 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"User successfully ended\", function () {",
-							"    pm.expect(pm.response.code).to.equal(200);",
-							"    pm.environment.unset(\"authToken\");",
+							"// Перевіряємо, що LOGOUT виконався успішно",
+							"pm.test(\"Logout successful\", function () {",
+							"    pm.response.to.have.status(200);",
 							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
 						],
 						"type": "text/javascript"
 					}
@@ -113,14 +132,15 @@
 					"script": {
 						"exec": [
 							"let jsonData = pm.response.json();",
-							"",
+							"// Перевіряємо, що логін успішний",
 							"pm.test(\"User successfully logged in\", function () {",
 							"    pm.expect(pm.response.code).to.equal(200);",
 							"});",
-							"",
-							"// Зберігаємо userId у змінній колекції",
-							"pm.collectionVariables.set(\"userId\", jsonData.data.userId);",
-							"",
+							"// Перевіряємо, що це той самий користувач",
+							"pm.test(\"Check userId consistency after login\", function () {",
+							"    pm.expect(jsonData.data.userId).to.equal(parseInt(pm.collectionVariables.get(\"userId\"), 10));",
+							"});",
+							"// Логування у Collection Runner",
 							"console.log(\"Logged in User ID:\", jsonData.data.userId);",
 							"console.log(\"Expected User ID:\", pm.collectionVariables.get(\"userId\"));"
 						],
@@ -165,31 +185,38 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Successfully received the data\", function () {",
+							"let jsonData = pm.response.json();",
+							"// Перевіряємо статус відповіді",
+							"pm.test(\"Response status is OK\", function () {",
 							"    pm.response.to.have.status(200);",
 							"});",
-							"let jsonData = pm.response.json();",
-							"pm.expect(pm.response.code).to.equal(200);",
+							"// Перевіряємо, що отримані дані збігаються з очікуваними",
+							"pm.test(`Verify that userId is ${pm.collectionVariables.get(\"userId\")}`, function () {",
+							"    pm.expect(jsonData.data.userId).to.equal(parseInt(pm.collectionVariables.get(\"userId\"), 10));",
+							"});",
+							"pm.test(`Verify that name is ${pm.collectionVariables.get(\"name\")}`, function () {",
+							"    pm.expect(jsonData.data.name).to.equal(pm.collectionVariables.get(\"name\"));",
+							"});",
+							"pm.test(`Verify that lastName is ${pm.collectionVariables.get(\"lastName\")}`, function () {",
+							"    pm.expect(jsonData.data.lastName).to.equal(pm.collectionVariables.get(\"lastName\"));",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Отримуємо очікувані значення перед запитом",
+							"let expectedUserId = pm.collectionVariables.get(\"userId\");",
+							"let expectedName = pm.collectionVariables.get(\"name\");",
+							"let expectedLastName = pm.collectionVariables.get(\"lastName\");",
 							"",
-							"// Логування отриманих значень (для звіту в Collection Runner)",
-							"console.log(\"Fetched User ID:\", jsonData.data.userId || \"No userId\");",
-							"console.log(\"Fetched Name:\", jsonData.data.name || \"No name\");",
-							"console.log(\"Fetched Last Name:\", jsonData.data.lastName || \"No lastName\");",
-							"console.log(\"Fetched Photo:\", jsonData.data.photoFilename || \"No photo\");",
-							"",
-							"pm.test(\"id exists \" + jsonData.data.userId, function(){",
-							"    pm.expect(jsonData.data.userId).to.exist;",
-							"})",
-							"pm.test(\"photoFilename = 'default-user.png'\", function(){",
-							"    pm.expect(jsonData.data.photoFilename).to.eql(\"default-user.png\")",
-							"});",
-							"pm.test(\"name = 'John'\", function(){",
-							"    pm.expect(jsonData.data.name).to.eql(\"John\")",
-							"});",
-							"pm.test(\"lastName = 'Doee'\", function(){",
-							"    pm.expect(jsonData.data.lastName).to.eql(\"Doee\")",
-							"});",
-							""
+							"// Логуємо значення перед відправкою",
+							"console.log(\"Expected UserId:\", expectedUserId);",
+							"console.log(\"Expected Name:\", expectedName);",
+							"console.log(\"Expected Last Name:\", expectedLastName);"
 						],
 						"type": "text/javascript"
 					}
@@ -222,15 +249,20 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Successfully received the data.\", function () {",
-							"    pm.response.to.have.status(200);",
-							"});",
 							"let jsonData = pm.response.json();",
-							"pm.expect(pm.response.code).to.equal(200); // Успішний запит",
 							"",
-							"// Перевіряємо, що масив машин порожній",
-							"console.log(\"User Cars:\", jsonData.data);",
-							"pm.expect(jsonData.data).to.have.lengthOf(0);"
+							"// Перевіряємо статус відповіді",
+							"pm.test(\"Response status is OK\", function () {",
+							"    pm.expect(pm.response.code).to.equal(200);",
+							"});",
+							"",
+							"// Перевіряємо, що список автівок порожній",
+							"pm.test(\"User has no cars\", function () {",
+							"    pm.expect(jsonData.data).to.have.lengthOf(0);",
+							"});",
+							"",
+							"// Логування у Collection Runner",
+							"console.log(\"User Cars:\", jsonData.data);"
 						],
 						"type": "text/javascript"
 					}
@@ -271,11 +303,20 @@
 					"listen": "test",
 					"script": {
 						"exec": [
+							"let jsonData = pm.response.json();",
+							"",
+							"// Перевіряємо, що акаунт успішно видалений",
 							"pm.test(\"User account was successfully deleted\", function () {",
 							"    pm.expect(pm.response.code).to.equal(200);",
-							"    pm.environment.unset(\"userId\");",
-							"    console.log(\"Deleted User ID:\", pm.collectionVariables.get(\"userId\"));",
-							"});"
+							"});",
+							"",
+							"// Логування у Collection Runner",
+							"console.log(\"Deleted User ID:\", pm.collectionVariables.get(\"userId\"));",
+							"",
+							"// Очищення змінних Postman",
+							"pm.collectionVariables.unset(\"userId\");",
+							"pm.collectionVariables.unset(\"name\");",
+							"pm.collectionVariables.unset(\"lastName\");"
 						],
 						"type": "text/javascript"
 					}
@@ -318,7 +359,7 @@
 			"value": ""
 		},
 		{
-			"key": "userId",
+			"key": "photoFilename",
 			"value": ""
 		}
 	]
