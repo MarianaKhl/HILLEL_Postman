@@ -1,0 +1,1258 @@
+{
+	"info": {
+		"_postman_id": "b4cb4943-f0b1-4e4d-916d-7a7d9fdc0990",
+		"name": "HILLEL_HW_4_JS_Postman_Fix",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "GET_BRAND",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200); ",
+							"});",
+							"// Отримуємо JSON-відповідь",
+							"let jsonData = pm.response.json();  ",
+							"",
+							"// ОТРИМУЄМО carData ЯК ОБ'ЄКТ (а не як string)",
+							"let carData = JSON.parse(pm.collectionVariables.get(\"carData\") || \"{}\");",
+							"",
+							"// Переконуємося, що змінні існують",
+							"pm.test(\"Check that carData contains necessary fields\", function () {",
+							"    pm.expect(carData).to.be.an(\"object\");",
+							"    pm.expect(carData).to.have.property(\"carBrandName\");",
+							"    pm.expect(carData).to.have.property(\"carModelName\");",
+							"    pm.expect(carData).to.have.property(\"mileage\");",
+							"});",
+							"// Цикл для пошуку бренду та запису його ID",
+							"for (let i = 0; i < jsonData.data.length; i++) {",
+							"    if (jsonData.data[i].title === carData.carBrandName) {",
+							"        carData.carBrandId = jsonData.data[i].id;",
+							"        pm.collectionVariables.set(\"carData\", JSON.stringify(carData));",
+							"        break;",
+							"    }",
+							"}",
+							"pm.collectionVariables.set(\"carData\", JSON.stringify(carData)) ",
+							"let testCarData = JSON.parse(pm.collectionVariables.get(\"carData\"));",
+							"",
+							"pm.test(`Observe that carData.carBrandName is ${carData.carBrandName}`, function(){",
+							"    pm.expect(carData.carBrandName).to.equals(testCarData.carBrandName);",
+							"    pm.expect(carData.carBrandName).to.exist;",
+							"});",
+							"pm.test(`Observe that carData.carModelName is ${carData.carModelName}`, function(){",
+							"    pm.expect(carData.carModelName).to.equals(testCarData.carModelName);",
+							"    pm.expect(carData.carModelName).to.exist;",
+							"});",
+							"pm.test(`Observe that carData.mileage is ${carData.mileage}`, function(){",
+							"    pm.expect(carData.mileage).to.equals(testCarData.mileage);",
+							"    pm.expect(carData.mileage).to.exist;",
+							"});    ",
+							"pm.test(`Observe that carData.carBrandId is ${carData.carBrandId}`, function(){",
+							"    pm.expect(carData.carBrandId).to.equals(testCarData.carBrandId);",
+							"    pm.expect(carData.carBrandId).to.exist;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Основні змінні колекції",
+							"pm.environment.set(\"URL\", \"https://qauto.forstudy.space/api\");",
+							"",
+							"// Дані про автомобіль",
+							"let carData = {",
+							"    \"carBrandName\": \"Ford\",",
+							"    \"carModelName\": \"Focus\",",
+							"    \"mileage\": 100  // Початковий пробіг",
+							"};",
+							"pm.collectionVariables.set(\"carData\", JSON.stringify(carData));",
+							"",
+							"// Створюємо єдиний об'єкт для першого експенсу (базовий рівень)",
+							"let expenseData = {",
+							"    \"carId\": null,",
+							"    \"reportedAt\": new Date().toISOString(),",
+							"    \"mileage\": carData.mileage,",
+							"    \"liters\": 50,",
+							"    \"totalCost\": 100",
+							"};",
+							"pm.collectionVariables.set(\"expenseData\", JSON.stringify(expenseData));",
+							"",
+							"console.log(\"Встановлено початкові значення для машини та першого експенсу:\", expenseData);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/cars/brands",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars",
+						"brands"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET_MODELS",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"// ОТРИМУЄМО carData ЯК ОБ'ЄКТ (а не string)",
+							"let carData = JSON.parse(pm.collectionVariables.get(\"carData\") || \"{}\");",
+							"",
+							"let jsonData = pm.response.json();",
+							"",
+							"// Переконуємося, що carData містить потрібні поля",
+							"pm.test(\"Check that carData contains necessary fields\", function () {",
+							"    pm.expect(carData).to.be.an(\"object\");",
+							"    pm.expect(carData).to.have.property(\"carBrandName\");",
+							"    pm.expect(carData).to.have.property(\"carModelName\");",
+							"    pm.expect(carData).to.have.property(\"mileage\");",
+							"    pm.expect(carData).to.have.property(\"carBrandId\");",
+							"});",
+							"// Цикл для пошуку моделі авто та запису її ID",
+							"for (let element of jsonData.data) {",
+							"    if (carData.carModelName === element.title && carData.carBrandId === element.carBrandId) {",
+							"        carData.carModelId = element.id;",
+							"        pm.collectionVariables.set(\"carData\", JSON.stringify(carData));",
+							"        break;",
+							"    }",
+							"}",
+							"// Перезаписуємо carData коректно",
+							"pm.collectionVariables.set(\"carData\", JSON.stringify(carData));",
+							"",
+							"// Отримуємо carData повторно, щоб перевірити його",
+							"let testcarData = JSON.parse(pm.collectionVariables.get(\"carData\"));",
+							"",
+							"// Перевірки, що carData містить потрібні значення",
+							"pm.test(`Observe that carData.carBrandName is ${carData.carBrandName}`, function () {",
+							"    pm.expect(carData.carBrandName).to.equal(testcarData.carBrandName);",
+							"    pm.expect(carData.carBrandName).to.exist;",
+							"});",
+							"pm.test(`Observe that carData.carModelName is ${carData.carModelName}`, function () {",
+							"    pm.expect(carData.carModelName).to.equal(testcarData.carModelName);",
+							"    pm.expect(carData.carModelName).to.exist;",
+							"});",
+							"pm.test(`Observe that carData.mileage is ${carData.mileage}`, function () {",
+							"    pm.expect(carData.mileage).to.equal(testcarData.mileage);",
+							"    pm.expect(carData.mileage).to.exist;",
+							"});",
+							"pm.test(`Observe that carData.carBrandId is ${carData.carBrandId}`, function () {",
+							"    pm.expect(carData.carBrandId).to.equal(testcarData.carBrandId);",
+							"    pm.expect(carData.carBrandId).to.exist;",
+							"});",
+							"pm.test(`Observe that carData.carModelId is ${carData.carModelId}`, function () {",
+							"    pm.expect(carData.carModelId).to.equal(testcarData.carModelId);",
+							"    pm.expect(carData.carModelId).to.exist;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/cars/models",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars",
+						"models"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "SIGNUP_NEW_USER",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"let jsonData = pm.response.json();",
+							"pm.test(\"User successfully registered\", function () {",
+							"    pm.expect(pm.response.code).to.equal(201);",
+							"});",
+							"// Переконуємося, що `userId` існує",
+							"if (!jsonData.data || !jsonData.data.userId) {",
+							"    throw new Error(\"'userId' is missing in response. Check signup request.\");",
+							"}",
+							"pm.collectionVariables.set(\"userId\", jsonData.data.userId);",
+							"console.log(\"Stored userId:\", jsonData.data.userId);",
+							"pm.collectionVariables.set(\"name\", jsonData.data.name || \"John\"); ",
+							"pm.collectionVariables.set(\"lastName\", jsonData.data.lastName || \"Doee\");"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"John\",\n    \"lastName\": \"Doee\",\n    \"email\": \"tcpmdsmyest@test.comnn\",\n    \"password\": \"Qwerty12345\",\n    \"repeatPassword\": \"Qwerty12345\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{URL}}/auth/signup",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"auth",
+						"signup"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CREATE_CAR",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Отримуємо JSON-відповідь",
+							"let jsonData = pm.response.json();",
+							"console.log(\"API Response:\", jsonData);",
+							"",
+							"pm.test(`Car successfully created (Status: ${pm.response.code})`, function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"// Перевіряємо, чи `data` існує у відповіді",
+							"pm.test(`Response contains 'data' field value: ${JSON.stringify(jsonData.data)})`, function () {",
+							"    pm.expect(jsonData).to.have.property(\"data\");",
+							"    pm.expect(jsonData.data).to.be.an(\"object\");",
+							"});",
+							"// Переконуємось, що `data.id` існує",
+							"if (jsonData.data && jsonData.data.id) {",
+							"    pm.test(`Car ID exists - Received: ${jsonData.data.id}`, function () {",
+							"        pm.expect(jsonData.data.id).to.exist;",
+							"        pm.expect(jsonData.data.id).to.be.a(\"number\");",
+							"    });",
+							"} else {",
+							"    console.log(\"Warning: No 'data.id' in response!\");",
+							"}",
+							"// Отримуємо carData та перевіряємо, що існує",
+							"let carData = pm.collectionVariables.get(\"carData\");",
+							"",
+							"// Якщо carData не існує або це не JSON-об'єкт – ініціалізуємо його",
+							"if (!carData || typeof carData !== \"string\") {",
+							"    carData = {};",
+							"} else {",
+							"    try {",
+							"        carData = JSON.parse(carData);",
+							"    } catch (error) {",
+							"        console.log(\"Error parsing carData, resetting object.\");",
+							"        carData = {};",
+							"    }",
+							"}",
+							"// Оновлюємо `carData` з `carId`",
+							"if (jsonData.data && jsonData.data.id) {",
+							"    carData.carId = jsonData.data.id;",
+							"    pm.collectionVariables.set(\"carData\", JSON.stringify(carData));",
+							"    console.log(\"Updated carData:\", carData);",
+							"",
+							"    pm.test(`Stored carData - carId: ${carData.carId}`, function () {",
+							"        pm.expect(carData.carId).to.equal(jsonData.data.id);",
+							"    });",
+							"} else {",
+							"    console.log(\"Skipped updating carData – No 'id' in response.\");",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"let carData = JSON.parse(pm.collectionVariables.get(\"carData\") || \"{}\");",
+							"",
+							"// carBrandId та carModelId – числа",
+							"carData.carBrandId = parseInt(carData.carBrandId) || null;",
+							"carData.carModelId = parseInt(carData.carModelId) || null;",
+							"",
+							"// Зберігаємо виправлені значення",
+							"pm.collectionVariables.set(\"carData\", JSON.stringify(carData));",
+							"",
+							"// Встановлюємо змінні для використання у запиті",
+							"pm.collectionVariables.set(\"currentCarBrandId\", carData.carBrandId);",
+							"pm.collectionVariables.set(\"currentCarModelId\", carData.carModelId);",
+							"pm.collectionVariables.set(\"currentMileage\", carData.mileage);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"carBrandId\": {{currentCarBrandId}},\n    \"carModelId\": {{currentCarModelId}},\n    \"mileage\": {{currentMileage}}\n}"
+				},
+				"url": {
+					"raw": "{{URL}}/cars",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET_Cars_id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"let jsonData = pm.response.json();",
+							"",
+							"// Якщо відповідь API = 404, пробуємо ще раз через 2 секунди",
+							"if (pm.response.code === 404) {",
+							"    console.warn(\"Car not found. Retrying in 2 seconds...\");",
+							"    setTimeout(() => {",
+							"        postman.setNextRequest(pm.request.name);",
+							"    }, 2000);",
+							"} else {",
+							"    pm.test(`Car details received (Status: ${pm.response.code})`, function () {",
+							"        pm.response.to.have.status(200);",
+							"    });",
+							"    // Перевіряємо, що відповідь API містить усі необхідні поля",
+							"    let requiredFields = [\"id\", \"carBrandId\", \"carModelId\", \"initialMileage\", \"updatedMileageAt\", \"mileage\", \"brand\", \"model\", \"logo\"];",
+							"    ",
+							"    requiredFields.forEach(field => {",
+							"        pm.test(`Field '${field}' exists Value: ${jsonData.data[field]}`, function () {",
+							"            pm.expect(jsonData.data, `Missing field: ${field}`).to.have.property(field);",
+							"        });",
+							"    });",
+							"",
+							"    // Перевіряємо, що `carId` у відповіді збігається з очікуваним",
+							"    let expectedCarId = parseInt(pm.collectionVariables.get(\"carId\"));",
+							"    let receivedCarId = jsonData.data.id;",
+							"",
+							"    pm.test(`Car ID is correct (Expected: ${expectedCarId}, Received: ${receivedCarId})`, function () {",
+							"        pm.expect(receivedCarId).to.eql(expectedCarId);",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"let carData = pm.collectionVariables.get(\"carData\");",
+							"",
+							"// Перевіряємо, що carData існує та є JSON-рядком",
+							"if (!carData || typeof carData !== \"string\") {",
+							"    throw new Error(\"'carData' is missing or invalid! Run 'POST /cars' before this request.\");",
+							"}",
+							"try {",
+							"    carData = JSON.parse(carData);",
+							"} catch (error) {",
+							"    throw new Error(\"Failed to parse 'carData' as JSON.\");",
+							"}",
+							"// Переконуємось, що carId існує",
+							"if (!carData.carId || isNaN(parseInt(carData.carId))) {",
+							"    throw new Error(\"'carId' is missing or invalid! Make sure 'POST /cars' executed successfully.\");",
+							"}",
+							"// Зберігаємо carId для запиту",
+							"pm.collectionVariables.set(\"carId\", carData.carId);",
+							"console.log(`Requesting car details for carId: ${carData.carId}`);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/cars/{{carId}}",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars",
+						"{{carId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "POST_CREATE_Expenses",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"let jsonData;",
+							"try {",
+							"    jsonData = pm.response.json();",
+							"} catch (e) {",
+							"    throw new Error(\"API response is not a valid JSON. Check request execution.\");",
+							"}",
+							"// Перевірка статусу відповіді",
+							"pm.test(`Response status is ${pm.response.code}`, function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"// Переконуємось, що відповідь містить `data`",
+							"if (!jsonData || !jsonData.data) {",
+							"    console.warn(\"API response is missing 'data' field!\", jsonData);",
+							"    pm.test(\"API error response\", function () {",
+							"        pm.expect(jsonData.status).to.equal(\"error\");",
+							"    });",
+							"    return; // Зупиняємо виконання, якщо `data` немає",
+							"}",
+							"// Логування отриманих даних",
+							"console.log(\"API response data:\", jsonData.data);",
+							"",
+							"let responseData = jsonData.data;",
+							"",
+							"// Перевірка, що експенс існує після оновлення",
+							"pm.test(\"Expense exists after update\", function () {",
+							"    pm.expect(responseData).to.be.an(\"object\");",
+							"    pm.expect(responseData.id, \"Expense ID should exist\").to.be.a(\"number\");",
+							"});",
+							"// Отримуємо збережені значення",
+							"let expectedExpenseData = JSON.parse(pm.collectionVariables.get(\"expenseData\"));",
+							"",
+							"// Перевірка `mileage`",
+							"console.log(`Очікуваний пробіг: ${expectedExpenseData.mileage}, Отриманий: ${responseData.mileage}`);",
+							"pm.test(\"Mileage is updated correctly\", function () {",
+							"    pm.expect(responseData.mileage, `Expected: ${expectedExpenseData.mileage}, Received: ${responseData.mileage}`)",
+							"        .to.equal(expectedExpenseData.mileage);",
+							"});",
+							"// Перевірка `liters`",
+							"console.log(`Очікувані літри: ${expectedExpenseData.liters}, Отримані: ${responseData.liters}`);",
+							"pm.test(\"Liters is updated correctly\", function () {",
+							"    pm.expect(responseData.liters, `Expected: ${expectedExpenseData.liters}, Received: ${responseData.liters}`)",
+							"        .to.equal(expectedExpenseData.liters);",
+							"});",
+							"// Перевірка `totalCost`",
+							"console.log(`Очікуваний totalCost: ${expectedExpenseData.totalCost}, Отриманий: ${responseData.totalCost}`);",
+							"pm.test(\"Total cost is updated correctly\", function () {",
+							"    pm.expect(responseData.totalCost, `Expected: ${expectedExpenseData.totalCost}, Received: ${responseData.totalCost}`)",
+							"        .to.equal(expectedExpenseData.totalCost);",
+							"});",
+							"// Отримуємо збережене значення serverReportedAt",
+							"let serverReportedAt = pm.collectionVariables.get(\"serverReportedAt\") || new Date().toISOString();",
+							"",
+							"// Функція для формату дати `YYYY-MM-DD`",
+							"function formatDate(dateString) {",
+							"    return dateString.split(\"T\")[0]; // Беремо лише частину з датою",
+							"}",
+							"// Очікувана дата у форматі `YYYY-MM-DD`",
+							"let expectedReportedAt = formatDate(serverReportedAt);",
+							"",
+							"// Отримана дата у відповіді",
+							"let receivedReportedAt = formatDate(responseData.reportedAt);",
+							"",
+							"console.log(`Очікуваний reportedAt: ${expectedReportedAt}, Отриманий: ${receivedReportedAt}`);",
+							"",
+							"// Перевірка `reportedAt`",
+							"pm.test(\"Reported At is correct\", function () {",
+							"    pm.expect(receivedReportedAt).to.equal(expectedReportedAt);",
+							"});",
+							"",
+							"// Перевірка `expenseId`",
+							"pm.test(`Expense ID is correct: ${responseData.id}`, function () {",
+							"    pm.expect(responseData.id).to.be.a(\"number\");",
+							"});",
+							"// Оновлення змінних для наступних тестів",
+							"pm.collectionVariables.set(\"expenseId\", responseData.id);",
+							"pm.collectionVariables.set(\"previousMileage\", responseData.mileage);",
+							"pm.collectionVariables.set(\"previousLiters\", responseData.liters);",
+							"pm.collectionVariables.set(\"previousTotalCost\", responseData.totalCost);",
+							"pm.collectionVariables.set(\"reportedAt\", responseData.reportedAt);",
+							"",
+							"console.log(\"Збережені значення для наступних тестів:\", {",
+							"    expenseId: responseData.id,",
+							"    previousMileage: responseData.mileage,",
+							"    previousLiters: responseData.liters,",
+							"    previousTotalCost: responseData.totalCost,",
+							"    reportedAt: responseData.reportedAt",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Отримуємо серверний час перед запитом",
+							"pm.sendRequest({",
+							"    url: `${pm.environment.get(\"URL\")}/server-time`,",
+							"    method: \"GET\"",
+							"}, function (err, res) {",
+							"    if (!err && res.code === 200) {",
+							"        pm.collectionVariables.set(\"serverReportedAt\", res.json().time);",
+							"    } else {",
+							"        pm.collectionVariables.set(\"serverReportedAt\", new Date().toISOString());",
+							"    }",
+							"    // Отримуємо serverReportedAt ПІСЛЯ його оновлення",
+							"    let serverReportedAt = pm.collectionVariables.get(\"serverReportedAt\");",
+							"    console.log(\"Отримано serverReportedAt:\", serverReportedAt);",
+							"",
+							"    // Отримуємо останній експенс",
+							"    let prevExpenseData = JSON.parse(pm.collectionVariables.get(\"expenseData\") || \"{}\");",
+							"",
+							"    // Отримуємо carId",
+							"    let carId = prevExpenseData.carId || pm.collectionVariables.get(\"carId\");",
+							"",
+							"    // Переконуємось, що carId правильного формату",
+							"    if (!carId || isNaN(parseInt(carId, 10))) {",
+							"        throw new Error(\"carId відсутній або має невірний формат. Переконайтесь, що авто створене.\");",
+							"    }",
+							"",
+							"    // Оновлюємо mileage (+10)",
+							"    let newMileage = prevExpenseData.mileage ? prevExpenseData.mileage + 10 : 110;",
+							"",
+							"    // Перераховуємо liters та totalCost",
+							"    let fuelConsumptionPerKm = 0.1; // Витрата пального на 1 км",
+							"    let pricePerLiter = 2; // Ціна за літр",
+							"",
+							"    let newLiters = prevExpenseData.liters + (newMileage - prevExpenseData.mileage) * fuelConsumptionPerKm;",
+							"    let newTotalCost = prevExpenseData.totalCost + (newLiters * pricePerLiter);",
+							"",
+							"    // Створюємо оновлений експенс",
+							"    let newExpenseData = {",
+							"        \"carId\": parseInt(carId, 10),",
+							"        \"reportedAt\": serverReportedAt,  // Використовуємо серверний час",
+							"        \"mileage\": newMileage,",
+							"        \"liters\": newLiters,",
+							"        \"totalCost\": newTotalCost",
+							"    };",
+							"",
+							"    // Зберігаємо змінну у колекції",
+							"    pm.collectionVariables.set(\"expenseData\", JSON.stringify(newExpenseData));",
+							"",
+							"    console.log(\"Створено новий експенс:\", newExpenseData);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{expenseData}}"
+				},
+				"url": {
+					"raw": "{{URL}}/expenses",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"expenses"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET_Expenses_id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"let jsonData = pm.response.json();",
+							"",
+							"// Перевіряємо, що відповідь містить `data`",
+							"pm.test(\"Response contains 'data'\", function () {",
+							"    pm.expect(jsonData).to.have.property(\"data\");",
+							"    pm.expect(jsonData.data).to.be.an(\"object\");",
+							"});",
+							"// Отримуємо очікувані значення з `expenseData`",
+							"let expectedExpenseData = pm.collectionVariables.get(\"expenseData\");",
+							"",
+							"pm.test(\"Check that 'expenseData' exists\", function () {",
+							"    pm.expect(expectedExpenseData, \"'expenseData' is missing! Check pre-request script.\").to.exist;",
+							"});",
+							"let expectedExpense = JSON.parse(expectedExpenseData);",
+							"",
+							"// Перевіряємо отримані значення",
+							"let receivedMileage = jsonData.data.mileage;",
+							"let receivedLiters = jsonData.data.liters;",
+							"let receivedTotalCost = jsonData.data.totalCost;",
+							"let receivedReportedAt = jsonData.data.reportedAt.split(\"T\")[0]; // Беремо лише дату",
+							"",
+							"// Тестуємо значення після `POST_CREATE_Expenses`",
+							"pm.test(`Mileage is correct after creation - Expected: ${expectedExpense.mileage}, Received: ${receivedMileage}`, function () {",
+							"    pm.expect(receivedMileage, `Mileage mismatch! Expected: ${expectedExpense.mileage}, but got: ${receivedMileage}`)",
+							"        .to.equal(expectedExpense.mileage);",
+							"});",
+							"pm.test(`Liters is correct after creation - Expected: ${expectedExpense.liters}, Received: ${receivedLiters}`, function () {",
+							"    pm.expect(receivedLiters, `Liters mismatch! Expected: ${expectedExpense.liters}, but got: ${receivedLiters}`)",
+							"        .to.equal(expectedExpense.liters);",
+							"});",
+							"pm.test(`Total cost is correct after creation - Expected: ${expectedExpense.totalCost}, Received: ${receivedTotalCost}`, function () {",
+							"    pm.expect(receivedTotalCost, `Total cost mismatch! Expected: ${expectedExpense.totalCost}, but got: ${receivedTotalCost}`)",
+							"        .to.equal(expectedExpense.totalCost);",
+							"});",
+							"// Перевіряємо дату, отриману з сервера",
+							"let serverReportedAt = pm.collectionVariables.get(\"serverReportedAt\").split(\"T\")[0];",
+							"let expectedReportedAt = expectedExpense.reportedAt.split(\"T\")[0];",
+							"",
+							"pm.test(`Reported At is correct after creation - Expected: ${expectedReportedAt}, Received: ${receivedReportedAt}`, function () {",
+							"    pm.expect(receivedReportedAt, `ReportedAt mismatch! Expected: ${expectedReportedAt}, but got: ${receivedReportedAt}`)",
+							"        .to.equal(expectedReportedAt);",
+							"});",
+							"// Зберігаємо ідентифікатор експенсу для оновлення у `PUT_UPDATE_Expenses_Id`",
+							"pm.collectionVariables.set(\"expenseId\", jsonData.data.id);",
+							"",
+							"console.log(\"Збережено expenseId для подальших запитів:\", jsonData.data.id);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/expenses/{{expenseId}}",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"expenses",
+						"{{expenseId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PUT_UPDATE_Expenses_Id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Отримуємо JSON-відповідь",
+							"let jsonData;",
+							"try {",
+							"    jsonData = pm.response.json();",
+							"} catch (e) {",
+							"    throw new Error(\"API response is not a valid JSON. Check request execution.\");",
+							"}",
+							"// Перевірка статусу відповіді",
+							"pm.test(`Response status is ${pm.response.code}`, function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"// Переконуємось, що відповідь містить `data`",
+							"pm.test(\"Response contains 'data' field\", function () {",
+							"    pm.expect(jsonData).to.have.property(\"data\");",
+							"});",
+							"// Якщо `data` відсутній, зупиняємо виконання тестів",
+							"if (!jsonData || !jsonData.data) {",
+							"    console.warn(\"API response is missing 'data' field!\", jsonData);",
+							"    pm.test(\"API error response\", function () {",
+							"        pm.expect(jsonData.status).to.equal(\"error\");",
+							"    });",
+							"    return;",
+							"}",
+							"// Перевіряємо, що експенс оновився",
+							"let responseData = jsonData.data;",
+							"pm.test(`Expense exists after update - ID: ${responseData.id}`, function () {",
+							"    pm.expect(responseData).to.be.an(\"object\");",
+							"});",
+							"// Переконання, що `updatedExpenseData` існує перед використанням",
+							"let storedExpenseData = pm.collectionVariables.get(\"updatedExpenseData\");",
+							"",
+							"pm.test(\"Check that 'updatedExpenseData' exists\", function () {",
+							"    pm.expect(storedExpenseData, \"updatedExpenseData is missing! Check pre-request script.\").to.exist;",
+							"});",
+							"// Парсимо `updatedExpenseData`",
+							"let expectedExpenseData;",
+							"try {",
+							"    expectedExpenseData = JSON.parse(storedExpenseData);",
+							"} catch (e) {",
+							"    throw new Error(\"Failed to parse 'updatedExpenseData'. Check stored format.\");",
+							"}",
+							"// Перевіряємо, що всі необхідні поля є у відповіді API",
+							"let requiredFields = [\"id\", \"carId\", \"reportedAt\", \"mileage\", \"liters\", \"totalCost\"];",
+							"",
+							"requiredFields.forEach(field => {",
+							"    pm.test(`Field '${field}' exists in response`, function () {",
+							"        pm.expect(jsonData.data, `Missing field: ${field}`).to.have.property(field);",
+							"    });",
+							"});",
+							"// Перевіряємо значення експенсу після оновлення",
+							"pm.test(`Mileage is correct - Expected: ${expectedExpenseData.mileage}, Received: ${responseData.mileage}`, function () {",
+							"    pm.expect(responseData.mileage).to.equal(expectedExpenseData.mileage);",
+							"});",
+							"pm.test(`Liters is correct - Expected: ${expectedExpenseData.liters}, Received: ${responseData.liters}`, function () {",
+							"    pm.expect(responseData.liters).to.equal(expectedExpenseData.liters);",
+							"});",
+							"pm.test(`Total cost is correct - Expected: ${expectedExpenseData.totalCost}, Received: ${responseData.totalCost}`, function () {",
+							"    pm.expect(responseData.totalCost).to.equal(expectedExpenseData.totalCost);",
+							"});",
+							"// Перевіряємо `reportedAt`, беремо лише дату (без часу)",
+							"let expectedReportedAt = expectedExpenseData.reportedAt.split(\"T\")[0];",
+							"let receivedReportedAt = responseData.reportedAt.split(\"T\")[0];",
+							"",
+							"pm.test(`ReportedAt is correct - Expected: ${expectedReportedAt}, Received: ${receivedReportedAt}`, function () {",
+							"    pm.expect(receivedReportedAt).to.equal(expectedReportedAt);",
+							"});",
+							"// Оновлення змінних для наступних тестів",
+							"pm.collectionVariables.set(\"expenseId\", parseInt(responseData.id, 10)); // Конвертація в число",
+							"pm.collectionVariables.set(\"previousMileage\", responseData.mileage);",
+							"pm.collectionVariables.set(\"previousLiters\", responseData.liters);",
+							"pm.collectionVariables.set(\"previousTotalCost\", responseData.totalCost);",
+							"pm.collectionVariables.set(\"reportedAt\", responseData.reportedAt);",
+							"",
+							"pm.test(\"Variables updated for next tests\", function () {",
+							"    pm.expect(pm.collectionVariables.get(\"expenseId\")).to.exist;",
+							"    pm.expect(pm.collectionVariables.get(\"previousMileage\")).to.exist;",
+							"    pm.expect(pm.collectionVariables.get(\"previousLiters\")).to.exist;",
+							"    pm.expect(pm.collectionVariables.get(\"previousTotalCost\")).to.exist;",
+							"    pm.expect(pm.collectionVariables.get(\"reportedAt\")).to.exist;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.sendRequest({",
+							"    url: `${pm.environment.get(\"URL\")}/server-time`,",
+							"    method: \"GET\"",
+							"}, function (err, res) {",
+							"    if (!err && res.code === 200) {",
+							"        pm.collectionVariables.set(\"serverReportedAt\", res.json().time);",
+							"    } else {",
+							"        pm.collectionVariables.set(\"serverReportedAt\", \"ERROR\"); // Не зберігати локальний час!",
+							"    }",
+							"});",
+							"let storedExpenseData = pm.collectionVariables.get(\"updatedExpenseData\");",
+							"pm.test(\"Check that updatedExpenseData exists\", function () {",
+							"    pm.expect(storedExpenseData, \"updatedExpenseData is missing\").to.exist;",
+							"});",
+							"// Отримуємо останній експенс",
+							"let previousExpenseData = JSON.parse(pm.collectionVariables.get(\"expenseData\"));",
+							"",
+							"// Оновлюємо mileage (додаємо +10)",
+							"let newMileage = previousExpenseData.mileage + 10;",
+							"",
+							"// Розрахунок витрати пального (наприклад, 0.1 л на 1 км)",
+							"let updatedLiters = previousExpenseData.liters + ((newMileage - previousExpenseData.mileage) * 0.1);",
+							"",
+							"// Розрахунок загальної вартості (наприклад, 2 валюти за 1 км)",
+							"let updatedTotalCost = previousExpenseData.totalCost + ((newMileage - previousExpenseData.mileage) * 2);",
+							"",
+							"// Оновлений експенс",
+							"let updatedExpenseData = {",
+							"    \"carId\": previousExpenseData.carId,",
+							"    \"reportedAt\": pm.collectionVariables.get(\"serverReportedAt\"),",
+							"    \"mileage\": newMileage,",
+							"    \"liters\": updatedLiters,",
+							"    \"totalCost\": updatedTotalCost",
+							"};",
+							"// Зберігаємо змінну",
+							"pm.collectionVariables.set(\"updatedExpenseData\", JSON.stringify(updatedExpenseData));",
+							"",
+							"console.log(\"Оновлено експенс з новими значеннями:\", updatedExpenseData);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{{updatedExpenseData}}"
+				},
+				"url": {
+					"raw": "{{URL}}/expenses/{{expenseId}}",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"expenses",
+						"{{expenseId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET_Expenses_Id_Final",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"let jsonData = pm.response.json();",
+							"",
+							"// Перевіряємо, що `updatedExpenseData` існує перед його використанням",
+							"let storedExpenseData = pm.collectionVariables.get(\"updatedExpenseData\");",
+							"",
+							"pm.test(`Check that updatedExpenseData exists - Values: ${storedExpenseData}`, function () {",
+							"    pm.expect(storedExpenseData, \"updatedExpenseData is missing! Check pre-request script.\").to.exist;",
+							"});",
+							"",
+							"let updatedExpense = JSON.parse(storedExpenseData);",
+							"",
+							"// Перевіряємо, що всі необхідні поля є у відповіді API",
+							"let requiredFields = [\"id\", \"carId\", \"reportedAt\", \"mileage\", \"liters\", \"totalCost\"];",
+							"",
+							"requiredFields.forEach(field => {",
+							"    pm.test(`Field '${field}' exists in response`, function () {",
+							"        pm.expect(jsonData.data, `Missing field: ${field}`).to.have.property(field);",
+							"    });",
+							"});",
+							"// Перевіряємо, чи значення відповідають очікуваним",
+							"pm.test(`Updated mileage is correct - Expected: ${updatedExpense.mileage}, Received: ${jsonData.data.mileage}`, function () {",
+							"    pm.expect(jsonData.data.mileage).to.equal(updatedExpense.mileage);",
+							"});",
+							"pm.test(`Updated liters is correct - Expected: ${updatedExpense.liters}, Received: ${jsonData.data.liters}`, function () {",
+							"    pm.expect(jsonData.data.liters).to.equal(updatedExpense.liters);",
+							"});",
+							"pm.test(`Updated total cost is correct - Expected: ${updatedExpense.totalCost}, Received: ${jsonData.data.totalCost}`, function () {",
+							"    pm.expect(jsonData.data.totalCost).to.equal(updatedExpense.totalCost);",
+							"});",
+							"// Перевіряємо, що `reportedAt` коректний (беремо лише дату без часу)",
+							"let reportedAtServer = jsonData.data.reportedAt; // Як повертає сервер",
+							"let reportedAtExpected = updatedExpense.reportedAt; // Як ми очікуємо",
+							"",
+							"pm.test(`ReportedAt is correct - Expected: ${reportedAtExpected}, Received: ${reportedAtServer}`, function () {",
+							"    pm.expect(reportedAtServer.split(\"T\")[0]).to.equal(reportedAtExpected.split(\"T\")[0]);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"let expenseId = pm.collectionVariables.get(\"expenseId\");",
+							"",
+							"if (!expenseId) {",
+							"    throw new Error(\"Required variable (expenseId) is missing.\");",
+							"}",
+							"// Логування перед запитом",
+							"console.log(`Preparing to verify expense ID: ${expenseId}`);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{URL}}/expenses/{{expenseId}}",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"expenses",
+						"{{expenseId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET_Cars_id_final",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"let jsonData = pm.response.json();",
+							"",
+							"// Якщо відповідь API = 404, пробуємо ще раз через 2 секунди",
+							"if (pm.response.code === 404) {",
+							"    console.warn(\"Car not found. Retrying in 2 seconds...\");",
+							"    setTimeout(() => {",
+							"        postman.setNextRequest(pm.request.name);",
+							"    }, 2000);",
+							"} else {",
+							"    pm.test(`Car details received (Status: ${pm.response.code})`, function () {",
+							"        pm.response.to.have.status(200);",
+							"    });",
+							"",
+							"    // Перевіряємо, що відповідь API містить усі необхідні поля та їх значення",
+							"    let requiredFields = [\"id\", \"carBrandId\", \"carModelId\", \"initialMileage\", \"updatedMileageAt\", \"carCreatedAt\", \"mileage\", \"brand\", \"model\", \"logo\"];",
+							"    ",
+							"    requiredFields.forEach(field => {",
+							"        pm.test(`Field '${field}' exists and has value`, function () {",
+							"            pm.expect(jsonData.data, `Missing field: ${field}`).to.have.property(field);",
+							"            pm.expect(jsonData.data[field], `Field '${field}' is empty`).to.not.be.null;",
+							"        });",
+							"    });",
+							"    // Переконуємось, що `carId` у відповіді збігається з очікуваним",
+							"    let expectedCarId = parseInt(pm.collectionVariables.get(\"carId\"));",
+							"    let receivedCarId = jsonData.data.id;",
+							"",
+							"    pm.test(`Car ID is correct - Expected: ${expectedCarId}, Received: ${receivedCarId}`, function () {",
+							"        pm.expect(receivedCarId).to.eql(expectedCarId);",
+							"    });",
+							"",
+							"    // Якщо є оновлений експенс – перевіряємо `mileage`",
+							"    let updatedExpenseData = pm.collectionVariables.get(\"updatedExpenseData\");",
+							"",
+							"    pm.test(\"Check that 'updatedExpenseData' exists\", function () {",
+							"        pm.expect(updatedExpenseData, \"updatedExpenseData is missing! Check pre-request script.\").to.exist;",
+							"    });",
+							"",
+							"    if (updatedExpenseData) {",
+							"        let expectedMileage = JSON.parse(updatedExpenseData).mileage;",
+							"        let receivedMileage = jsonData.data.mileage;",
+							"",
+							"        pm.test(`Mileage is correct - Expected: ${expectedMileage}, Received: ${receivedMileage}`, function () {",
+							"            pm.expect(receivedMileage).to.equal(expectedMileage);",
+							"        });",
+							"",
+							"        // Якщо `mileage` не оновився після експенсу – повторний запит через 3 секунди",
+							"        const maxRetries = 3;",
+							"        const retryDelay = 3000;",
+							"        let retryCount = pm.collectionVariables.get(\"retryCount\") || 0;",
+							"",
+							"        if (receivedMileage !== expectedMileage && retryCount < maxRetries) {",
+							"            console.warn(`Mileage update not applied yet. Retrying in ${retryDelay / 1000} seconds... (Expected: ${expectedMileage}, Received: ${receivedMileage})`);",
+							"            pm.collectionVariables.set(\"retryCount\", retryCount + 1);",
+							"            setTimeout(() => {",
+							"                postman.setNextRequest(pm.request.name);",
+							"            }, retryDelay);",
+							"        } else {",
+							"            pm.collectionVariables.unset(\"retryCount\"); // Очищаємо лічильник спроб після успіху",
+							"        }",
+							"    }",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/cars/{{carId}}",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars",
+						"{{carId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DELETE_USER_FINISH",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"User account was successfully deleted\", function () {",
+							"    pm.expect(pm.response.code).to.equal(200);",
+							"    pm.environment.unset(\"userId\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/users",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"users"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "carData",
+			"value": ""
+		},
+		{
+			"key": "currentCarBrandId",
+			"value": ""
+		},
+		{
+			"key": "currentCarModelId",
+			"value": ""
+		},
+		{
+			"key": "currentMileage",
+			"value": ""
+		},
+		{
+			"key": "requestBody",
+			"value": ""
+		},
+		{
+			"key": "expenseData",
+			"value": ""
+		},
+		{
+			"key": "updatedExpenseData",
+			"value": ""
+		},
+		{
+			"key": "lastName",
+			"value": ""
+		},
+		{
+			"key": "name",
+			"value": ""
+		},
+		{
+			"key": "userId",
+			"value": ""
+		},
+		{
+			"key": "carId",
+			"value": ""
+		},
+		{
+			"key": "expenseId",
+			"value": ""
+		},
+		{
+			"key": "carBrandId",
+			"value": ""
+		},
+		{
+			"key": "carModelId",
+			"value": ""
+		},
+		{
+			"key": "mileage",
+			"value": ""
+		},
+		{
+			"key": "reportedAt",
+			"value": ""
+		},
+		{
+			"key": "currentLiters",
+			"value": ""
+		},
+		{
+			"key": "currentReportedAt",
+			"value": ""
+		},
+		{
+			"key": "initialMileage",
+			"value": ""
+		},
+		{
+			"key": "serverReportedAt",
+			"value": ""
+		},
+		{
+			"key": "updatedMileageAt",
+			"value": ""
+		},
+		{
+			"key": "formattedReportedAt",
+			"value": ""
+		},
+		{
+			"key": "updatedMileage",
+			"value": ""
+		},
+		{
+			"key": "storedMileage",
+			"value": ""
+		},
+		{
+			"key": "carDetailsRequest",
+			"value": ""
+		},
+		{
+			"key": "savedMileage",
+			"value": ""
+		},
+		{
+			"key": "testMileage",
+			"value": ""
+		},
+		{
+			"key": "expectedMileage",
+			"value": ""
+		},
+		{
+			"key": "previousMileage",
+			"value": ""
+		},
+		{
+			"key": "userExpenses_mileage",
+			"value": ""
+		},
+		{
+			"key": "previousLiters",
+			"value": ""
+		},
+		{
+			"key": "previousTotalCost",
+			"value": ""
+		}
+	]
+}
