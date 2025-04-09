@@ -1,0 +1,1667 @@
+1. Створити користувача. Тестові дані підтягнути з зовнішнього .json файлу
+
+2. Створити автівку для користувача. Тестові дані підтягнути з зовнішнього .json файлу
+
+3. Створити 2 експенси для автівки. Тестові дані підтягнути з зовнішнього .json файлу. Тестові дані мають містити інкремент міледжа, літраж, вартість.
+
+4. Перелогінити користувача.
+
+5. Перевірити параметри користувача, автівки та експенсів. При всіх перевірках значення, що перевіряються, мають бути виведені в репорт ранера.
+
+Доповнити всi реквести тестом схеми вiдповiдi.
+
+Колекція має виконуватись автоматично 3 рази для різних користувачів.Свагер - https://qauto.forstudy.space/api-docs/#/
+
+
+{
+	"info": {
+		"_postman_id": "664f2720-4e2d-40f3-aeb1-c962f4499d15",
+		"name": "HILLEL_HW_6_Test_Data_Madness",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "42582792"
+	},
+	"item": [
+		{
+			"name": "SIGNUP_New_User",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Перевіряємо статус відповіді (очікуємо 201 Created)",
+							"pm.test(\"Response status is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"// Отримуємо JSON-відповідь",
+							"let jsonData;",
+							"try {",
+							"    jsonData = pm.response.json();",
+							"    console.log(\"Отримана відповідь:\", jsonData);",
+							"} catch (e) {",
+							"    throw new Error(\"Відповідь API не є валідним JSON!\");",
+							"}",
+							"// Переконуємося, що у відповіді є статус \"ok\"",
+							"pm.test(\"Response contains status 'ok'\", function () {",
+							"    pm.expect(jsonData).to.have.property(\"status\", \"ok\");",
+							"});",
+							"// Переконуємося, що поле `data` існує",
+							"pm.test(\"Response contains 'data' field\", function () {",
+							"    pm.expect(jsonData).to.have.property(\"data\");",
+							"});",
+							"// Перевіряємо, що `userId` отримано і він є числом",
+							"if (jsonData.data && jsonData.data.userId) {",
+							"    pm.test(\"User ID отримано та є числом\", function () {",
+							"        pm.expect(jsonData.data.userId).to.be.a(\"number\");",
+							"    });",
+							"",
+							"    // Зберігаємо userId для подальших запитів",
+							"    pm.collectionVariables.set(\"userId\", jsonData.data.userId);",
+							"    console.log(`Збережено userId: ${jsonData.data.userId}`);",
+							"} else {",
+							"    throw new Error(\"❌ Поле 'userId' відсутнє у відповіді!\");",
+							"}",
+							"const userSchema = {",
+							"    \"type\": \"object\",",
+							"    \"properties\": {",
+							"        \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] },",
+							"        \"data\": {",
+							"            \"type\": \"object\",",
+							"            \"properties\": {",
+							"                \"userId\": { \"type\": \"integer\" },",
+							"                \"distanceUnits\": { \"type\": \"string\" },",
+							"                \"currency\": { \"type\": \"string\" }",
+							"            },",
+							"            \"required\": [\"userId\", \"distanceUnits\", \"currency\"]",
+							"        }",
+							"    },",
+							"    \"required\": [\"status\", \"data\"]",
+							"};",
+							"pm.test(\"Відповідь відповідає JSON-схемі\", function () {",
+							"    pm.expect(jsonData).to.have.jsonSchema(userSchema);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.environment.set(\"URL\", \"https://qauto.forstudy.space/api\");",
+							"console.log(\"Set URL:\", pm.environment.get(\"URL\"));",
+							"",
+							"// Отримуємо тестові дані з змінних колекції",
+							"let userData = {",
+							"    \"name\": pm.collectionVariables.get(\"userName\"),",
+							"    \"lastName\": pm.collectionVariables.get(\"userLastName\"),",
+							"    \"email\": pm.collectionVariables.get(\"userEmail\"),",
+							"    \"password\": pm.collectionVariables.get(\"userPassword\"),",
+							"    \"repeatPassword\": pm.collectionVariables.get(\"userRepeatPassword\")",
+							"};",
+							"// Перевіряємо, що всі необхідні дані присутні",
+							"if (!userData.name || !userData.lastName || !userData.email || !userData.password) {",
+							"    throw new Error(\"Дані користувача відсутні або мають неправильну структуру!\");",
+							"}",
+							"// Логуємо дані перед відправленням",
+							"console.log(\"Дані для реєстрації:\", userData);",
+							"",
+							"// Зберігаємо їх у `pm.environment` для використання у тілі запиту",
+							"pm.environment.set(\"signupPayload\", JSON.stringify(userData));"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"{{name}}\",\n    \"lastName\": \"{{lastName}}\",\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\",\n    \"repeatPassword\": \"{{repeatPassword}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{URL}}/auth/signup",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"auth",
+						"signup"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Car_Brand",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Перевіряємо статус відповіді",
+							"pm.test(\"Response status is 200\", function () {",
+							"    pm.expect(pm.response.code).to.equal(200);",
+							"});",
+							"// Отримуємо список брендів",
+							"let jsonData = pm.response.json();",
+							"pm.test(\"Response contains brand data\", function () {",
+							"    pm.expect(jsonData.status).to.equal(\"ok\");",
+							"    pm.expect(jsonData.data).to.be.an(\"array\").with.length.greaterThan(0);",
+							"});",
+							"// Використовуємо carBrandId з testData.json або обираємо перший бренд",
+							"let savedCarBrandId = pm.collectionVariables.get(\"carBrandId\");",
+							"let selectedBrand = jsonData.data.find(brand => brand.id == savedCarBrandId) || jsonData.data[0];",
+							"",
+							"if (!selectedBrand) {",
+							"    throw new Error(\"❌ Жодного бренду не знайдено у відповіді API!\");",
+							"}",
+							"// Валідація JSON-схеми для брендів",
+							"const brandSchema = {",
+							"    \"type\": \"object\",",
+							"    \"properties\": {",
+							"        \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] },",
+							"        \"data\": {",
+							"            \"type\": \"array\",",
+							"            \"items\": {",
+							"                \"type\": \"object\",",
+							"                \"properties\": {",
+							"                    \"id\": { \"type\": \"integer\" },",
+							"                    \"title\": { \"type\": \"string\" },",
+							"                    \"logoFilename\": { \"type\": \"string\" }",
+							"                },",
+							"                \"required\": [\"id\", \"title\"]",
+							"            }",
+							"        }",
+							"    },",
+							"    \"required\": [\"status\", \"data\"]",
+							"};",
+							"",
+							"pm.test(\"Відповідь відповідає JSON-схемі для брендів\", function () {",
+							"    pm.expect(jsonData).to.have.jsonSchema(brandSchema);",
+							"});",
+							"// Збереження обраного бренду у змінну колекції",
+							"pm.collectionVariables.set(\"carBrandId\", selectedBrand.id);",
+							"console.log(`Використовується бренд: ${selectedBrand.name} (ID: ${selectedBrand.id})`);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.sendRequest({",
+							"    url: pm.environment.get(\"URL\") + \"/cars/brands\",",
+							"    method: \"GET\"",
+							"}, function (err, response) {",
+							"    if (err) {",
+							"        console.error(\"❌ Помилка отримання брендів:\", err);",
+							"        return;",
+							"    }",
+							"",
+							"    let jsonData = response.json();",
+							"    if (jsonData.status !== \"ok\" || !jsonData.data.length) {",
+							"        console.error(\"❌ Немає доступних брендів!\", jsonData);",
+							"        return;",
+							"    }",
+							"",
+							"    let brands = jsonData.data;",
+							"    pm.collectionVariables.set(\"availableCarBrands\", JSON.stringify(brands));",
+							"",
+							"    // Використовуємо перший бренд або випадковий",
+							"    let randomBrand = brands[Math.floor(Math.random() * brands.length)];",
+							"    pm.collectionVariables.set(\"carBrandId\", randomBrand.id);",
+							"    console.log(`Використовуємо бренд: ${randomBrand.title} (ID: ${randomBrand.id})`);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/cars/brands",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars",
+						"brands"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Car_Model",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Response status is 200\", function () {",
+							"    pm.expect(pm.response.code).to.equal(200);",
+							"});",
+							"",
+							"let jsonData = pm.response.json();",
+							"",
+							"pm.test(\"Response contains status 'ok'\", function () {",
+							"    pm.expect(jsonData.status).to.equal(\"ok\");",
+							"});",
+							"",
+							"pm.test(\"Response contains car models\", function () {",
+							"    pm.expect(jsonData.data).to.be.an(\"array\").that.is.not.empty;",
+							"});",
+							"",
+							"let firstModel = jsonData.data[0];",
+							"pm.collectionVariables.set(\"carModelId\", firstModel.id);",
+							"",
+							"pm.test(\"Response matches schema\", function () {",
+							"    const modelSchema = {",
+							"        \"type\": \"object\",",
+							"        \"properties\": {",
+							"            \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] },",
+							"            \"data\": {",
+							"                \"type\": \"array\",",
+							"                \"items\": {",
+							"                    \"type\": \"object\",",
+							"                    \"properties\": {",
+							"                        \"id\": { \"type\": \"integer\" },",
+							"                        \"carBrandId\": { \"type\": \"integer\" },",
+							"                        \"title\": { \"type\": \"string\" }",
+							"                    },",
+							"                    \"required\": [\"id\", \"carBrandId\", \"title\"]",
+							"                }",
+							"            }",
+							"        },",
+							"        \"required\": [\"status\", \"data\"]",
+							"    };",
+							"    pm.expect(jsonData).to.have.jsonSchema(modelSchema);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"let savedBrandId = pm.collectionVariables.get(\"carBrandId\");",
+							"",
+							"pm.sendRequest({",
+							"    url: pm.environment.get(\"URL\") + `/cars/models?brandId=${savedBrandId}`,",
+							"    method: \"GET\"",
+							"}, function (err, response) {",
+							"    if (err) {",
+							"        console.error(\"❌ Помилка отримання моделей:\", err);",
+							"        return;",
+							"    }",
+							"",
+							"    let jsonData = response.json();",
+							"    if (jsonData.status !== \"ok\" || !jsonData.data.length) {",
+							"        console.error(\"❌ Немає доступних моделей!\", jsonData);",
+							"        return;",
+							"    }",
+							"",
+							"    let models = jsonData.data;",
+							"    pm.collectionVariables.set(\"availableCarModels\", JSON.stringify(models));",
+							"",
+							"    // Використовуємо першу або випадкову модель",
+							"    let randomModel = models[Math.floor(Math.random() * models.length)];",
+							"    pm.collectionVariables.set(\"carModelId\", randomModel.id);",
+							"    console.log(`Використовуємо модель: ${randomModel.title} (ID: ${randomModel.id})`);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/cars/models",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars",
+						"models"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create_Car",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Response status is 201\", function () {",
+							"    pm.expect(pm.response.code).to.equal(201);",
+							"});",
+							"",
+							"let jsonData = pm.response.json();",
+							"",
+							"pm.test(\"Response contains status 'ok'\", function () {",
+							"    pm.expect(jsonData.status).to.equal(\"ok\");",
+							"});",
+							"pm.test(\"Car object contains required fields\", function () {",
+							"    pm.expect(jsonData.data).to.have.property(\"id\").that.is.a(\"number\");",
+							"    pm.expect(jsonData.data).to.have.property(\"carBrandId\").that.is.a(\"number\");",
+							"    pm.expect(jsonData.data).to.have.property(\"carModelId\").that.is.a(\"number\");",
+							"    pm.expect(jsonData.data).to.have.property(\"mileage\").that.is.a(\"number\");",
+							"    pm.expect(jsonData.data).to.have.property(\"updatedMileageAt\").that.is.a(\"string\");",
+							"});",
+							"pm.collectionVariables.set(\"carId\", jsonData.data.id);",
+							"",
+							"pm.test(\"Response matches schema\", function () {",
+							"    const carSchema = {",
+							"        \"type\": \"object\",",
+							"        \"properties\": {",
+							"            \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] },",
+							"            \"data\": {",
+							"                \"type\": \"object\",",
+							"                \"properties\": {",
+							"                    \"id\": { \"type\": \"integer\" },",
+							"                    \"carBrandId\": { \"type\": \"integer\" },",
+							"                    \"carModelId\": { \"type\": \"integer\" },",
+							"                    \"mileage\": { \"type\": \"integer\" },",
+							"                    \"updatedMileageAt\": { \"type\": \"string\", \"format\": \"date-time\" }",
+							"                },",
+							"                \"required\": [\"id\", \"carBrandId\", \"carModelId\", \"mileage\", \"updatedMileageAt\"]",
+							"            }",
+							"        },",
+							"        \"required\": [\"status\", \"data\"]",
+							"    };",
+							"    pm.expect(jsonData).to.have.jsonSchema(carSchema);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Отримуємо carBrandId з колекційної змінної",
+							"let carBrandId = pm.collectionVariables.get(\"carBrandId\");",
+							"let carModelId = pm.collectionVariables.get(\"carModelId\");",
+							"",
+							"// ❌ Якщо бренди ще не отримані, зупиняємо виконання",
+							"if (!carBrandId || !carModelId) {",
+							"    throw new Error(\"❌ Відсутні carBrandId або carModelId! Спочатку виконайте GET /cars/brands та GET /cars/models.\");",
+							"}",
+							"",
+							"console.log(`Використовуємо carBrandId: ${carBrandId}, carModelId: ${carModelId}`);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"content-type": true
+				}
+			},
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"carBrandId\": {{carBrandId}},\n  \"carModelId\": {{carModelId}},\n  \"mileage\": {{mileage}}\n}"
+				},
+				"url": {
+					"raw": "{{URL}}/cars",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create_Expenses_1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Перевіряємо статус відповіді",
+							"pm.test(\"Response status is 200\", function () {",
+							"    pm.expect(pm.response.code).to.equal(200);",
+							"});",
+							"// Збереження витрати",
+							"let jsonData = pm.response.json();",
+							"if (jsonData.data && jsonData.data.id) {",
+							"    pm.collectionVariables.set(\"expenseId\", jsonData.data.id);",
+							"    console.log(`Збережено expenseId: ${jsonData.data.id}`);",
+							"} else {",
+							"    throw new Error(\"❌ Відповідь API не містить 'expenseId'!\");",
+							"}",
+							"",
+							"pm.test(\"Response contains status 'ok'\", function () {",
+							"    pm.expect(jsonData.status).to.equal(\"ok\");",
+							"});",
+							"pm.test(\"Expense object contains required fields\", function () {",
+							"    pm.expect(jsonData.data).to.have.property(\"id\").that.is.a(\"number\");",
+							"    pm.expect(jsonData.data).to.have.property(\"carId\").that.is.a(\"number\");",
+							"    pm.expect(jsonData.data).to.have.property(\"mileage\").that.is.a(\"number\");",
+							"    pm.expect(jsonData.data).to.have.property(\"liters\").that.is.a(\"number\");",
+							"    pm.expect(jsonData.data).to.have.property(\"totalCost\").that.is.a(\"number\");",
+							"    pm.expect(jsonData.data).to.have.property(\"reportedAt\").that.is.a(\"string\");",
+							"});",
+							"pm.collectionVariables.set(\"expenseId\", jsonData.data.id);",
+							"",
+							"pm.test(\"Response matches schema\", function () {",
+							"    const expenseSchema = {",
+							"        \"type\": \"object\",",
+							"        \"properties\": {",
+							"            \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] },",
+							"            \"data\": {",
+							"                \"type\": \"object\",",
+							"                \"properties\": {",
+							"                    \"id\": { \"type\": \"integer\" },",
+							"                    \"carId\": { \"type\": \"integer\" },",
+							"                    \"mileage\": { \"type\": \"integer\" },",
+							"                    \"liters\": { \"type\": \"number\" },",
+							"                    \"totalCost\": { \"type\": \"number\" },",
+							"                    \"reportedAt\": { \"type\": \"string\", \"format\": \"date-time\" }",
+							"                },",
+							"                \"required\": [\"id\", \"carId\", \"mileage\", \"liters\", \"totalCost\", \"reportedAt\"]",
+							"            }",
+							"        },",
+							"        \"required\": [\"status\", \"data\"]",
+							"    };",
+							"    pm.expect(jsonData).to.have.jsonSchema(expenseSchema);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"let baseUrl = pm.environment.get(\"URL\");",
+							"if (!baseUrl) throw new Error(\"❌ URL не встановлено!\");",
+							"console.log(\"✅ BASE URL:\", baseUrl);",
+							"",
+							"// Отримуємо carId",
+							"let carId = pm.collectionVariables.get(\"carId\");",
+							"if (!carId) {",
+							"    throw new Error(\"❌ 'carId' не визначено! Спочатку створіть автомобіль.\");",
+							"}",
+							"",
+							"// Базовий mileage",
+							"let baseMileage = parseInt(pm.collectionVariables.get(\"carMileage\")) || parseInt(pm.iterationData.get(\"mileage\"));",
+							"if (!baseMileage) throw new Error(\"❌ Початковий mileage не знайдено!\");",
+							"",
+							"// Інкремент з iterationData (EXPENSE 1)",
+							"let mileageIncrement = parseInt(pm.iterationData.get(\"expense1_mileage\"));",
+							"if (isNaN(mileageIncrement)) throw new Error(\"❌ Інкремент mileage (expense1) не знайдено в iterationData!\");",
+							"",
+							"// Фінальний mileage",
+							"let newMileage = baseMileage + mileageIncrement;",
+							"pm.collectionVariables.set(\"expense_mileage\", newMileage);",
+							"",
+							"// Інші дані з iterationData для EXPENSE 1",
+							"let liters = pm.iterationData.get(\"expense1_liters\");",
+							"let totalCost = pm.iterationData.get(\"expense1_totalCost\");",
+							"pm.collectionVariables.set(\"expense_liters\", liters);",
+							"pm.collectionVariables.set(\"expense_totalCost\", totalCost);",
+							"",
+							"// Отримання server-time",
+							"pm.sendRequest({",
+							"    url: baseUrl.replace('/api', '') + \"/server-time\",",
+							"    method: \"GET\"",
+							"}, function (err, res) {",
+							"    let serverTime = (res && res.code === 200) ? res.json().time : new Date().toISOString();",
+							"    pm.collectionVariables.set(\"reportedAt\", serverTime);",
+							"    console.log(`Server Time для reportedAt (EXPENSE 1): ${serverTime}`);",
+							"});",
+							"",
+							"// Лог",
+							"console.log(`✅ EXPENSE 1 DATA: baseMileage ${baseMileage}, increment ${mileageIncrement}, final mileage ${newMileage}, liters ${liters}, totalCost ${totalCost}`);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"carId\": {{carId}}, \n    \"reportedAt\": \"{{reportedAt}}\",\n    \"mileage\": {{expense_mileage}},\n    \"liters\": {{expense1_liters}},\n    \"totalCost\": {{expense1_totalCost}},\n    \"forceMileage\": false\n}"
+				},
+				"url": {
+					"raw": "{{URL}}/expenses",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"expenses"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create_Expenses_2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Перевіряємо статус відповіді",
+							"pm.test(\"Response status is 200\", function () {",
+							"    pm.expect(pm.response.code).to.equal(200);",
+							"});",
+							"// Збереження витрати",
+							"let jsonData = pm.response.json();",
+							"if (jsonData.data && jsonData.data.id) {",
+							"    pm.collectionVariables.set(\"expenseId\", jsonData.data.id);",
+							"    console.log(`Збережено expenseId: ${jsonData.data.id}`);",
+							"} else {",
+							"    throw new Error(\"❌ Відповідь API не містить 'expenseId'!\");",
+							"}",
+							"",
+							"pm.test(\"Response contains status 'ok'\", function () {",
+							"    pm.expect(jsonData.status).to.equal(\"ok\");",
+							"});",
+							"pm.test(\"Expense object contains required fields\", function () {",
+							"    pm.expect(jsonData.data).to.have.property(\"id\").that.is.a(\"number\");",
+							"    pm.expect(jsonData.data).to.have.property(\"carId\").that.is.a(\"number\");",
+							"    pm.expect(jsonData.data).to.have.property(\"mileage\").that.is.a(\"number\");",
+							"    pm.expect(jsonData.data).to.have.property(\"liters\").that.is.a(\"number\");",
+							"    pm.expect(jsonData.data).to.have.property(\"totalCost\").that.is.a(\"number\");",
+							"    pm.expect(jsonData.data).to.have.property(\"reportedAt\").that.is.a(\"string\");",
+							"});",
+							"pm.collectionVariables.set(\"expenseId\", jsonData.data.id);",
+							"",
+							"pm.test(\"Response matches schema\", function () {",
+							"    const expenseSchema = {",
+							"        \"type\": \"object\",",
+							"        \"properties\": {",
+							"            \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] },",
+							"            \"data\": {",
+							"                \"type\": \"object\",",
+							"                \"properties\": {",
+							"                    \"id\": { \"type\": \"integer\" },",
+							"                    \"carId\": { \"type\": \"integer\" },",
+							"                    \"mileage\": { \"type\": \"integer\" },",
+							"                    \"liters\": { \"type\": \"number\" },",
+							"                    \"totalCost\": { \"type\": \"number\" },",
+							"                    \"reportedAt\": { \"type\": \"string\", \"format\": \"date-time\" }",
+							"                },",
+							"                \"required\": [\"id\", \"carId\", \"mileage\", \"liters\", \"totalCost\", \"reportedAt\"]",
+							"            }",
+							"        },",
+							"        \"required\": [\"status\", \"data\"]",
+							"    };",
+							"    pm.expect(jsonData).to.have.jsonSchema(expenseSchema);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"let baseUrl = pm.environment.get(\"URL\");",
+							"if (!baseUrl) throw new Error(\"❌ URL не встановлено!\");",
+							"console.log(\"✅ BASE URL:\", baseUrl);",
+							"",
+							"// Отримуємо carId",
+							"let carId = pm.collectionVariables.get(\"carId\");",
+							"if (!carId) {",
+							"    throw new Error(\"❌ 'carId' не визначено! Спочатку створіть автомобіль.\");",
+							"}",
+							"",
+							"// Базовий mileage",
+							"let baseMileage = parseInt(pm.collectionVariables.get(\"carMileage\")) || parseInt(pm.iterationData.get(\"mileage\"));",
+							"if (!baseMileage) throw new Error(\"❌ Початковий mileage не знайдено!\");",
+							"",
+							"// Інкремент з iterationData (EXPENSE 2)",
+							"let mileageIncrement = parseInt(pm.iterationData.get(\"expense2_mileage\"));",
+							"if (isNaN(mileageIncrement)) throw new Error(\"❌ Інкремент mileage (expense2) не знайдено в iterationData!\");",
+							"",
+							"// Фінальний mileage",
+							"let newMileage = baseMileage + mileageIncrement;",
+							"pm.collectionVariables.set(\"expense_mileage\", newMileage);",
+							"",
+							"// Інші дані з iterationData для EXPENSE 2",
+							"let liters = pm.iterationData.get(\"expense2_liters\");",
+							"let totalCost = pm.iterationData.get(\"expense2_totalCost\");",
+							"pm.collectionVariables.set(\"expense_liters\", liters);",
+							"pm.collectionVariables.set(\"expense_totalCost\", totalCost);",
+							"",
+							"// Отримання server-time",
+							"pm.sendRequest({",
+							"    url: baseUrl.replace('/api', '') + \"/server-time\",",
+							"    method: \"GET\"",
+							"}, function (err, res) {",
+							"    let serverTime = (res && res.code === 200) ? res.json().time : new Date().toISOString();",
+							"    pm.collectionVariables.set(\"reportedAt\", serverTime);",
+							"    console.log(`✅ Server Time для reportedAt (EXPENSE 2): ${serverTime}`);",
+							"});",
+							"",
+							"// Лог",
+							"console.log(`✅ EXPENSE 2 DATA: baseMileage ${baseMileage}, increment ${mileageIncrement}, final mileage ${newMileage}, liters ${liters}, totalCost ${totalCost}`);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"carId\": {{carId}}, \n    \"reportedAt\": \"{{reportedAt}}\",\n    \"mileage\": {{expense_mileage}},\n    \"liters\": {{expense2_liters}},\n    \"totalCost\": {{expense2_totalCost}},\n    \"forceMileage\": false\n}"
+				},
+				"url": {
+					"raw": "{{URL}}/expenses",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"expenses"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "SignIn",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Переконуємося, що статус відповіді 200",
+							"pm.test(\"Response status is 200\", function () {",
+							"    pm.expect(pm.response.code).to.equal(200);",
+							"});",
+							"// Отримуємо JSON-відповідь",
+							"let jsonData;",
+							"try {",
+							"    jsonData = pm.response.json();",
+							"    console.log(\"Отримані дані відповіді:\", jsonData);",
+							"} catch (e) {",
+							"    throw new Error(\"❌ Відповідь API не є валідним JSON!\");",
+							"}",
+							"// Перевіряємо, що у відповіді є поле `status`",
+							"pm.test(\"Response contains 'status' field\", function () {",
+							"    pm.expect(jsonData).to.have.property(\"status\", \"ok\");",
+							"});",
+							"// Переконуємося, що `userId` отримано і є числом",
+							"pm.test(\"Перевіряємо, що userId отримано\", function () {",
+							"    pm.expect(jsonData).to.have.property(\"data\");",
+							"    pm.expect(jsonData.data).to.have.property(\"userId\").that.is.a(\"number\");",
+							"",
+							"    // Зберігаємо userId у змінних колекції",
+							"    pm.collectionVariables.set(\"userId\", jsonData.data.userId);",
+							"    console.log(`Збережено userId: ${jsonData.data.userId}`);",
+							"});",
+							"// Перевіряємо, що `distanceUnits` та `currency` повертаються у відповіді",
+							"pm.test(\"Перевіряємо, що валюта та одиниці відстані вказані\", function () {",
+							"    pm.expect(jsonData.data).to.have.property(\"currency\").that.is.a(\"string\");",
+							"    pm.expect(jsonData.data).to.have.property(\"distanceUnits\").that.is.a(\"string\");",
+							"",
+							"    console.log(`Валюта: ${jsonData.data.currency}, Одиниці відстані: ${jsonData.data.distanceUnits}`);",
+							"});",
+							"// Перевірка відповідності JSON-схемі",
+							"const signInSchema = {",
+							"    \"type\": \"object\",",
+							"    \"properties\": {",
+							"        \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] },",
+							"        \"data\": {",
+							"            \"type\": \"object\",",
+							"            \"properties\": {",
+							"                \"userId\": { \"type\": \"integer\" },",
+							"                \"distanceUnits\": { \"type\": \"string\" },",
+							"                \"currency\": { \"type\": \"string\" }",
+							"            },",
+							"            \"required\": [\"userId\", \"distanceUnits\", \"currency\"]",
+							"        }",
+							"    },",
+							"    \"required\": [\"status\", \"data\"]",
+							"};",
+							"pm.test(\"Відповідь відповідає JSON-схемі\", function () {",
+							"    pm.expect(jsonData).to.have.jsonSchema(signInSchema);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"{{userPassword}}\"\n}"
+				},
+				"url": {
+					"raw": "{{URL}}/auth/signin",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"auth",
+						"signin"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "User_Id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Оголошуємо JSON-схему перед її використанням",
+							"const userProfileSchema = {",
+							"    \"type\": \"object\",",
+							"    \"properties\": {",
+							"        \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] },",
+							"        \"data\": {",
+							"            \"type\": \"object\",",
+							"            \"properties\": {",
+							"                \"userId\": { \"type\": \"integer\" },",
+							"                \"photoFilename\": { \"type\": \"string\" },",
+							"                \"name\": { \"type\": \"string\" },",
+							"                \"lastName\": { \"type\": \"string\" }",
+							"            },",
+							"            \"required\": [\"userId\", \"photoFilename\", \"name\", \"lastName\"]",
+							"        }",
+							"    },",
+							"    \"required\": [\"status\", \"data\"]",
+							"};",
+							"// Перевіряємо, що статус відповіді 200",
+							"pm.test(\"Response status is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"// Перевіряємо, що відповідь є валідним JSON",
+							"let jsonData;",
+							"try {",
+							"    jsonData = pm.response.json();",
+							"    console.log(\"Parsed JSON Response:\", jsonData);",
+							"} catch (e) {",
+							"    console.error(\"❌ Response is not a valid JSON.\");",
+							"    pm.test(\"❌ Response is a valid JSON\", function () {",
+							"        pm.expect(false).to.be.true;",
+							"    });",
+							"    return;",
+							"}",
+							"// Переконуємось, що у відповіді є поле `data`",
+							"pm.test(\"Response contains 'data' field\", function () {",
+							"    pm.expect(jsonData).to.have.property(\"data\");",
+							"});",
+							"// Переконуємось, що `userId` існує у відповіді та є числом",
+							"pm.test(\"User ID is present\", function () {",
+							"    pm.expect(jsonData.data).to.have.property(\"userId\");",
+							"    pm.expect(jsonData.data.userId).to.be.a(\"number\");",
+							"});",
+							"// Переконуємось, що `name` та `lastName` існують у відповіді",
+							"pm.test(\"User Name and Last Name are present\", function () {",
+							"    pm.expect(jsonData.data).to.have.property(\"name\");",
+							"    pm.expect(jsonData.data).to.have.property(\"lastName\");",
+							"});",
+							"// Переконуємось, що `photoFilename` є рядком",
+							"pm.test(\"User profile has a photo filename\", function () {",
+							"    pm.expect(jsonData.data).to.have.property(\"photoFilename\");",
+							"    pm.expect(jsonData.data.photoFilename).to.be.a(\"string\");",
+							"});",
+							"// Перевіряємо, що відповідь відповідає JSON-схемі",
+							"pm.test(\"Response matches expected JSON schema\", function () {",
+							"    pm.expect(jsonData).to.have.jsonSchema(userProfileSchema);",
+							"});",
+							"pm.collectionVariables.set(\"userId\", jsonData.data.userId);",
+							"console.log(`Saved userId: ${jsonData.data.userId}`);",
+							"",
+							"pm.collectionVariables.set(\"userName\", jsonData.data.name);",
+							"pm.collectionVariables.set(\"userLastName\", jsonData.data.lastName);",
+							"console.log(`User Name: ${jsonData.data.name} ${jsonData.data.lastName}`);",
+							"",
+							"console.log(\"Отримані дані профілю:\", {",
+							"    userId: pm.collectionVariables.get(\"userId\"),",
+							"    userName: pm.collectionVariables.get(\"userName\"),",
+							"    userLastName: pm.collectionVariables.get(\"userLastName\"),",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Логуємо початок запиту",
+							"console.log(\"Отримання даних профілю користувача...\");",
+							"",
+							"// Очищаємо змінні перед запитом",
+							"pm.collectionVariables.unset(\"userId\");",
+							"pm.collectionVariables.unset(\"userName\");",
+							"pm.collectionVariables.unset(\"userLastName\");",
+							"",
+							"// Встановлюємо заголовки для запиту (якщо потрібні)",
+							"pm.request.headers.add({ key: \"Accept\", value: \"application/json\" });"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{URL}}/users/profile",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"users",
+						"profile"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Car_Id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Отримуємо `createdCarId` (спочатку шукаємо в `pm.variables`, потім у `collectionVariables`)",
+							"let createdCarId = pm.variables.get(\"createdCarId\") || pm.collectionVariables.get(\"carId\");",
+							"",
+							"if (!createdCarId) {",
+							"    throw new Error(\"❌ 'createdCarId' не знайдено! Переконайтеся, що авто було створено.\");",
+							"}",
+							"",
+							"console.log(`Використовується createdCarId: ${createdCarId}`);",
+							"pm.variables.set(\"createdCarId\", createdCarId);",
+							"",
+							"// Переконуємось, що статус відповіді – 200 або 404 (щоб уникнути критичних помилок)",
+							"pm.test(\"Response status is 200\", function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200]);",
+							"});",
+							"// Логуємо відповідь API",
+							"console.log(\"Raw API Response:\", pm.response.text());",
+							"",
+							"// Отримуємо JSON-відповідь",
+							"let jsonData;",
+							"try {",
+							"    jsonData = pm.response.json();",
+							"    console.log(\"Parsed JSON Response:\", jsonData);",
+							"} catch (e) {",
+							"    throw new Error(\"❌ Response is not a valid JSON. Переконайтесь, що сервер повертає коректну JSON-структуру.\");",
+							"}",
+							"// Якщо відповідь містить статус \"error\"",
+							"if (jsonData.status === \"error\") {",
+							"    console.warn(`Server error: ${jsonData.message}`);",
+							"    pm.test(\"❌ Server returned an error\", function () {",
+							"        pm.expect(jsonData).to.have.property(\"message\");",
+							"    });",
+							"    return; // Зупиняємо подальші перевірки",
+							"}",
+							"// Перевіряємо, що `data` існує",
+							"pm.test(\"Response contains 'data' field\", function () {",
+							"    pm.expect(jsonData).to.have.property(\"data\");",
+							"});",
+							"// Перевіряємо структуру отриманого автомобіля",
+							"const carSchema = {",
+							"    \"type\": \"object\",",
+							"    \"properties\": {",
+							"        \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] },",
+							"        \"data\": {",
+							"            \"type\": \"object\",",
+							"            \"properties\": {",
+							"                \"id\": { \"type\": \"integer\" },",
+							"                \"carBrandId\": { \"type\": \"integer\" },",
+							"                \"carModelId\": { \"type\": \"integer\" },",
+							"                \"mileage\": { \"type\": \"integer\" },",
+							"                \"initialMileage\": { \"type\": \"integer\" },",
+							"                \"updatedMileageAt\": { \"type\": \"string\", \"format\": \"date-time\" },",
+							"                \"brand\": { \"type\": \"string\" },",
+							"                \"model\": { \"type\": \"string\" },",
+							"                \"logo\": { \"type\": \"string\" }",
+							"            },",
+							"            \"required\": [\"id\", \"carBrandId\", \"carModelId\", \"mileage\", \"brand\", \"model\"]",
+							"        }",
+							"    },",
+							"    \"required\": [\"status\", \"data\"]",
+							"};",
+							"// Перевірка відповіді на відповідність JSON-схемі",
+							"pm.test(\"Response matches expected JSON schema\", function () {",
+							"    pm.expect(jsonData).to.have.jsonSchema(carSchema);",
+							"});",
+							"// Перевіряємо, чи `data` – масив або об'єкт",
+							"if (Array.isArray(jsonData.data)) {",
+							"    if (jsonData.data.length > 0) {",
+							"        let car = jsonData.data[0];",
+							"        pm.test(\"First car contains required fields\", function () {",
+							"            pm.expect(car).to.have.property(\"id\").that.is.a(\"number\");",
+							"            pm.expect(car).to.have.property(\"carBrandId\").that.is.a(\"number\");",
+							"            pm.expect(car).to.have.property(\"carModelId\").that.is.a(\"number\");",
+							"            pm.expect(car).to.have.property(\"mileage\").that.is.a(\"number\");",
+							"        });",
+							"",
+							"        // Збереження carId у змінну колекції",
+							"        pm.collectionVariables.set(\"carId\", car.id);",
+							"        console.log(`Saved carId: ${car.id}`);",
+							"    } else {",
+							"        console.warn(\"⚠️ Warning: No cars found for this user.\");",
+							"    }",
+							"} else if (jsonData.data && typeof jsonData.data === \"object\" && jsonData.data.id) {",
+							"    // Якщо відповідь повертає об'єкт (не масив)",
+							"    let car = jsonData.data;",
+							"    pm.test(\"Single car response contains required fields\", function () {",
+							"        pm.expect(car).to.have.property(\"id\").that.is.a(\"number\");",
+							"        pm.expect(car).to.have.property(\"carBrandId\").that.is.a(\"number\");",
+							"        pm.expect(car).to.have.property(\"carModelId\").that.is.a(\"number\");",
+							"        pm.expect(car).to.have.property(\"mileage\").that.is.a(\"number\");",
+							"    });",
+							"",
+							"    // Збереження carId у змінну колекції",
+							"    pm.collectionVariables.set(\"carId\", car.id);",
+							"    console.log(`Saved carId: ${car.id}`);",
+							"} else {",
+							"    console.warn(\"Warning: Unexpected data structure in response.\");",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Отримуємо `userId`, який має бути збережений після авторизації",
+							"let userId = pm.collectionVariables.get(\"userId\");",
+							"if (!userId) {",
+							"    throw new Error(\"❌ 'userId' не знайдено! Переконайтеся, що користувач зареєстрований та авторизований.\");",
+							"}",
+							"console.log(`Використовується userId: ${userId}`);",
+							"",
+							"// Отримуємо `carId`, який має бути збережений після `POST /cars`",
+							"let carId = pm.collectionVariables.get(\"carId\");",
+							"",
+							"if (!carId) {",
+							"    console.warn(\"Warning: 'carId' не знайдено! Можливо, авто ще не створене.\");",
+							"} else {",
+							"    console.log(`Використовується carId: ${carId}`);",
+							"    pm.variables.set(\"createdCarId\", carId);",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/cars/{{createdCarId}}",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars",
+						"{{createdCarId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Expenses_Id_Final",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const expenseSchema = {",
+							"    \"type\": \"object\",",
+							"    \"properties\": {",
+							"        \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] },",
+							"        \"data\": {",
+							"            \"type\": \"object\",",
+							"            \"properties\": {",
+							"                \"id\": { \"type\": \"integer\" },",
+							"                \"carId\": { \"type\": \"integer\" },",
+							"                \"reportedAt\": { \"type\": \"string\", \"format\": \"date\" },",
+							"                \"mileage\": { \"type\": \"integer\" },",
+							"                \"liters\": { \"type\": \"number\" },",
+							"                \"totalCost\": { \"type\": \"number\" }",
+							"            },",
+							"            \"required\": [\"id\", \"carId\", \"reportedAt\", \"mileage\", \"liters\", \"totalCost\"]",
+							"        }",
+							"    },",
+							"    \"required\": [\"status\", \"data\"]",
+							"};",
+							"// Перевіряємо, що статус відповіді – 200 або 404",
+							"pm.test(\"Response status is 200\", function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200]);",
+							"});",
+							"// Отримуємо JSON-відповідь",
+							"let jsonData;",
+							"try {",
+							"    jsonData = pm.response.json();",
+							"    console.log(\"Parsed JSON Response:\", jsonData);",
+							"} catch (e) {",
+							"    throw new Error(\"❌ Response is not a valid JSON. Переконайтесь, що сервер повертає коректну JSON-структуру.\");",
+							"}",
+							"// Якщо відповідь містить статус \"error\"",
+							"if (jsonData.status === \"error\") {",
+							"    console.warn(`Server error: ${jsonData.message}`);",
+							"    pm.test(\"❌ Server returned an error\", function () {",
+							"        pm.expect(jsonData).to.have.property(\"message\");",
+							"    });",
+							"    return; // Зупиняємо подальші перевірки",
+							"}",
+							"",
+							"// Перевіряємо, що `data` існує",
+							"pm.test(\"Response contains 'data' field\", function () {",
+							"    pm.expect(jsonData).to.have.property(\"data\");",
+							"});",
+							"// Перевіряємо відповідність відповіді схемі",
+							"pm.test(\"Response matches expected JSON schema\", function () {",
+							"    pm.expect(jsonData).to.have.jsonSchema(expenseSchema);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Отримуємо `expenseId`",
+							"let expenseId = pm.collectionVariables.get(\"expenseId\");",
+							"",
+							"if (!expenseId) {",
+							"    throw new Error(\"❌ 'expenseId' відсутній! Переконайтеся, що витрати були створені.\");",
+							"}",
+							"",
+							"console.log(`Отримуємо витрати з ID: ${expenseId}`);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{URL}}/expenses/{{expenseId}}",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"expenses",
+						"{{expenseId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Expenses_id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Переконуємось, що статус відповіді 200 (успішне видалення)",
+							"pm.test(\"Expense deleted successfully\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"// Отримуємо JSON-відповідь",
+							"let jsonData;",
+							"try {",
+							"    jsonData = pm.response.json();",
+							"} catch (e) {",
+							"    throw new Error(\"❌ Response is not a valid JSON. Переконайтесь, що сервер повертає JSON.\");",
+							"}",
+							"// Видаляємо expenseId після успішного видалення",
+							"pm.collectionVariables.unset(\"expenseId\");",
+							"console.log(\"'expenseId' успішно видалено з Postman Collection Variables.\");",
+							"",
+							"// Додано перевірку JSON-схеми В КІНЦІ",
+							"const expenseDeleteSchema = {",
+							"    \"type\": \"object\",",
+							"    \"properties\": {",
+							"        \"status\": { \"type\": \"string\", \"enum\": [\"ok\", \"error\"] },",
+							"        \"data\": {",
+							"            \"type\": \"object\",",
+							"            \"properties\": {",
+							"                \"expenseId\": { \"oneOf\": [{ \"type\": \"integer\" }, { \"type\": \"string\", \"pattern\": \"^[0-9]+$\" }] }",
+							"            },",
+							"            \"required\": [\"expenseId\"]",
+							"        },",
+							"        \"message\": { \"type\": \"string\" }",
+							"    },",
+							"    \"required\": [\"status\"]",
+							"};",
+							"",
+							"pm.test(\"Response matches expected JSON schema\", function () {",
+							"    pm.expect(jsonData).to.have.jsonSchema(expenseDeleteSchema);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Отримуємо `expenseId`",
+							"let expenseId = pm.collectionVariables.get(\"expenseId\");",
+							"if (!expenseId) {",
+							"    throw new Error(\"❌ 'expenseId' не знайдено! Неможливо виконати видалення.\");",
+							"}",
+							"console.log(`Видалення витрати з ID: ${expenseId}`);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "{{URL}}/expenses/{{expenseId}}",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"expenses",
+						"{{expenseId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DELETE_Car_Id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Перевіряємо статус відповіді 200 (успішне видалення)",
+							"pm.test(\"Car deleted successfully\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"// Отримуємо JSON-відповідь",
+							"let jsonData;",
+							"try {",
+							"    jsonData = pm.response.json();",
+							"} catch (e) {",
+							"    throw new Error(\"❌ Response is not a valid JSON. Переконайтесь, що сервер повертає JSON.\");",
+							"}",
+							"// Перевіряємо відповідність JSON схемі",
+							"const carDeleteSchema = {",
+							"    \"type\": \"object\",",
+							"    \"properties\": {",
+							"        \"status\": { \"type\": \"string\", \"enum\": [\"ok\", \"error\"] },",
+							"        \"data\": {",
+							"            \"type\": \"object\",",
+							"            \"properties\": {",
+							"                \"carId\": { \"type\": \"integer\" }",
+							"            },",
+							"            \"required\": [\"carId\"]",
+							"        },",
+							"        \"message\": { \"type\": \"string\" }",
+							"    },",
+							"    \"required\": [\"status\"]",
+							"};",
+							"",
+							"pm.test(\"Response matches expected JSON schema\", function () {",
+							"    pm.expect(jsonData).to.have.jsonSchema(carDeleteSchema);",
+							"});",
+							"// Логування",
+							"console.log(\"Автомобіль успішно видалено.\");",
+							"",
+							"// Видаляємо carId після успішного видалення",
+							"pm.collectionVariables.unset(\"carId\");",
+							"console.log(\"'carId' успішно видалено з Postman Collection Variables.\");"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Отримуємо `carId`",
+							"let carId = pm.collectionVariables.get(\"carId\");",
+							"if (!carId) {",
+							"    throw new Error(\"❌ 'carId' не знайдено! Неможливо виконати видалення.\");",
+							"}",
+							"console.log(`Видалення авто з ID: ${carId}`);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"userId\": \"{{userId}}\"\n}"
+				},
+				"url": {
+					"raw": "{{URL}}/cars/{{carId}}",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars",
+						"{{carId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete_User",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Переконуємось, що статус відповіді 200 (успішне видалення)",
+							"pm.test(\"User account was successfully deleted\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"// Отримуємо JSON-відповідь",
+							"let jsonData;",
+							"try {",
+							"    jsonData = pm.response.json();",
+							"    console.log(\"Parsed JSON Response:\", jsonData);",
+							"} catch (e) {",
+							"    throw new Error(\"Response is not a valid JSON. Переконайтесь, що сервер повертає JSON.\");",
+							"}",
+							"// Очистка всіх змінних, оскільки користувач видалений",
+							"pm.collectionVariables.clear();",
+							"console.log(\"Всі змінні колекції очищені.\");",
+							"",
+							"// Визначаємо схему відповіді",
+							"const deleteUserSchema = {",
+							"    \"type\": \"object\",",
+							"    \"properties\": {",
+							"        \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] }",
+							"    },",
+							"    \"required\": [\"status\"]",
+							"};",
+							"// Перевіряємо відповідність відповіді JSON-схемі",
+							"pm.test(\"Response matches expected JSON schema\", function () {",
+							"    pm.expect(jsonData).to.have.jsonSchema(deleteUserSchema);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Логуємо видалення користувача",
+							"console.log(\"Видалення користувача...\");"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/users",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"users"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					"// Встановлюємо базовий URL API",
+					"pm.environment.set(\"URL\", \"https://qauto.forstudy.space/api\");",
+					"console.log(\"Set API URL:\", pm.environment.get(\"URL\"));",
+					"",
+					"// Отримуємо тестові дані для поточної ітерації",
+					"let userData = {",
+					"    \"name\": pm.iterationData.get(\"name\"),",
+					"    \"lastName\": pm.iterationData.get(\"lastName\"),",
+					"    \"email\": pm.iterationData.get(\"email\"),",
+					"    \"password\": pm.iterationData.get(\"password\"),",
+					"    \"repeatPassword\": pm.iterationData.get(\"repeatPassword\") || pm.iterationData.get(\"password\"),",
+					"    \"carBrandId\": pm.iterationData.get(\"carBrandId\"),",
+					"    \"carModelId\": pm.iterationData.get(\"carModelId\"),",
+					"    \"mileage\": pm.iterationData.get(\"mileage\"),",
+					"    \"expense1_mileage\": pm.iterationData.get(\"expense1_mileage\"),",
+					"    \"expense1_liters\": pm.iterationData.get(\"expense1_liters\"),",
+					"    \"expense1_totalCost\": pm.iterationData.get(\"expense1_totalCost\"),",
+					"    \"expense2_mileage\": pm.iterationData.get(\"expense2_mileage\"),",
+					"    \"expense2_liters\": pm.iterationData.get(\"expense2_liters\"),",
+					"    \"expense2_totalCost\": pm.iterationData.get(\"expense2_totalCost\")",
+					"};",
+					"// Логуємо отримані тестові дані",
+					"console.log(\"Отримані тестові дані:\", userData);",
+					"",
+					"// Переконуємось, що є необхідні дані для користувача",
+					"if (!userData.name || !userData.email || !userData.password) {",
+					"    throw new Error(\"❌ Дані користувача не знайдені або мають неправильну структуру.\");",
+					"}",
+					"// Зберігаємо змінні користувача",
+					"pm.collectionVariables.set(\"userName\", userData.name);",
+					"pm.collectionVariables.set(\"userLastName\", userData.lastName);",
+					"pm.collectionVariables.set(\"userEmail\", userData.email);",
+					"pm.collectionVariables.set(\"userPassword\", userData.password);",
+					"pm.collectionVariables.set(\"userRepeatPassword\", userData.repeatPassword);",
+					"",
+					"// Перевіряємо, чи потрібно отримати дані для авто",
+					"if (!userData.carBrandId || !userData.carModelId) {",
+					"    console.log(\"Отримуємо список доступних брендів...\");",
+					"    pm.sendRequest({",
+					"        url: pm.environment.get(\"URL\") + \"/cars/brands\",",
+					"        method: \"GET\"",
+					"    }, function (err, res) {",
+					"        if (err || res.json().status !== \"ok\") {",
+					"            throw new Error(\"❌ Помилка отримання брендів!\");",
+					"        }",
+					"",
+					"        let brands = res.json().data;",
+					"        if (!brands.length) {",
+					"            throw new Error(\"Жодного доступного бренду не знайдено!\");",
+					"        }",
+					"",
+					"        // Вибираємо перший бренд зі списку",
+					"        let selectedBrandId = brands[0].id;",
+					"        pm.collectionVariables.set(\"carBrandId\", selectedBrandId);",
+					"        console.log(`Використовуємо бренд: ${brands[0].title} (ID: ${selectedBrandId})`);",
+					"",
+					"        // Тепер отримуємо список моделей для вибраного бренду",
+					"        console.log(\"Отримуємо список доступних моделей...\");",
+					"        pm.sendRequest({",
+					"            url: pm.environment.get(\"URL\") + `/cars/models?brandId=${selectedBrandId}`,",
+					"            method: \"GET\"",
+					"        }, function (err, res) {",
+					"            if (err || res.json().status !== \"ok\") {",
+					"                throw new Error(\"❌ Помилка отримання моделей!\");",
+					"            }",
+					"",
+					"            let models = res.json().data;",
+					"            if (!models.length) {",
+					"                throw new Error(\"❌ У вибраного бренду немає доступних моделей!\");",
+					"            }",
+					"",
+					"            // Вибираємо першу модель зі списку",
+					"            let selectedModelId = models[0].id;",
+					"            pm.collectionVariables.set(\"carModelId\", selectedModelId);",
+					"            console.log(`Використовуємо модель: ${models[0].title} (ID: ${selectedModelId})`);",
+					"        });",
+					"    });",
+					"} else {",
+					"    // Якщо carBrandId і carModelId вже є у testData.json, просто використовуємо їх",
+					"    pm.collectionVariables.set(\"carBrandId\", userData.carBrandId);",
+					"    pm.collectionVariables.set(\"carModelId\", userData.carModelId);",
+					"    console.log(`Використовуємо передані дані: carBrandId: ${userData.carBrandId}, carModelId: ${userData.carModelId}`);",
+					"}",
+					"// Переконуємось, що є необхідні дані для пробігу авто",
+					"if (!userData.mileage) {",
+					"    throw new Error(\"❌ Відсутні дані авто! Переконайтеся, що 'mileage' існує у testData.json.\");",
+					"}",
+					"// Зберігаємо змінні авто",
+					"pm.collectionVariables.set(\"carMileage\", userData.mileage);",
+					"",
+					"// Переконуємось, що є необхідні дані для експенсів",
+					"if (!userData.expense1_mileage || !userData.expense1_liters || !userData.expense1_totalCost ||",
+					"    !userData.expense2_mileage || !userData.expense2_liters || !userData.expense2_totalCost) {",
+					"    throw new Error(\"❌ Відсутні дані витрат! Переконайтеся, що всі поля експенсів існують у testData.json.\");",
+					"}",
+					"// Зберігаємо дані першого експенсу",
+					"pm.collectionVariables.set(\"expense1_mileage\", userData.expense1_mileage);",
+					"pm.collectionVariables.set(\"expense1_liters\", userData.expense1_liters);",
+					"pm.collectionVariables.set(\"expense1_totalCost\", userData.expense1_totalCost);",
+					"",
+					"// Зберігаємо дані другого експенсу",
+					"pm.collectionVariables.set(\"expense2_mileage\", userData.expense2_mileage);",
+					"pm.collectionVariables.set(\"expense2_liters\", userData.expense2_liters);",
+					"pm.collectionVariables.set(\"expense2_totalCost\", userData.expense2_totalCost);",
+					"",
+					"console.log(\"Всі змінні успішно збережені! Готово до виконання API-запитів.\");"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					"// Переконуємось, що відповідь є коректним JSON",
+					"let jsonData;",
+					"try {",
+					"    jsonData = pm.response.json();",
+					"} catch (e) {",
+					"    throw new Error(\"Response is not a valid JSON.\");",
+					"}",
+					"// Перевірка статусу відповіді",
+					"pm.test(\"Response status is valid\", function () {",
+					"    pm.expect(pm.response.code).to.be.oneOf([200, 201, 204, 404]);",
+					"});",
+					"// Якщо відповідь містить статус \"error\", логувати та перевіряти повідомлення",
+					"if (jsonData.status === \"error\") {",
+					"    console.warn(`API повернув помилку: ${jsonData.message}`);",
+					"    pm.test(\"❌ API повернув помилку\", function () {",
+					"        pm.expect(jsonData).to.have.property(\"message\");",
+					"    });",
+					"} else {",
+					"    pm.test(\"API повернув коректні дані\", function () {",
+					"        pm.expect(jsonData).to.have.property(\"status\");",
+					"        pm.expect(jsonData.status).to.equal(\"ok\");",
+					"    });",
+					"}",
+					"// Логуємо отримані дані для перевірки",
+					"console.log(\"Отримані дані відповіді:\", jsonData);"
+				]
+			}
+		}
+	]
+}
+
+
+
+Файл json: 
+[
+  {
+    "name": "John",
+    "lastName": "Doe",
+    "email": "brrqeuesrms@example.com",
+    "password": "Password123",
+    "repeatPassword": "Password123",
+    "mileage": 10000,
+    "expense1_mileage": 10010,
+    "expense1_liters": 50,
+    "expense1_totalCost": 100,
+    "expense2_mileage": 10020,
+    "expense2_liters": 55,
+    "expense2_totalCost": 120
+  },
+  {
+    "name": "Alice",
+    "lastName": "Smith",
+    "email": "atessmithssebse@example.com",
+    "password": "Password124",
+    "repeatPassword": "Password124",
+    "mileage": 5000,
+    "expense1_mileage": 5010,
+    "expense1_liters": 40,
+    "expense1_totalCost": 80,
+    "expense2_mileage": 5025,
+    "expense2_liters": 45,
+    "expense2_totalCost": 100
+  },
+  {
+    "name": "Bob",
+    "lastName": "Johnson",
+    "email": "avsjohnsmfbb@example.com",
+    "password": "securePass456",
+    "repeatPassword": "securePass456",
+    "mileage": 8000,
+    "expense1_mileage": 8010,
+    "expense1_liters": 30,
+    "expense1_totalCost": 70,
+    "expense2_mileage": 8025,
+    "expense2_liters": 35,
+    "expense2_totalCost": 90
+  }
+]
+
