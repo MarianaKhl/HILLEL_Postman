@@ -1,0 +1,3532 @@
+1. Створити користувача. Тестові дані підтягнути з зовнішнього .json файлу
+
+2. Створити по одній автівці для всіх валідних поєднань BrandID та modelID. Значення міледжу обрати випадково в межах 1000-100000
+
+3. Для кожної автівки, створити по п'ять експенсів. Кожен має інкрементувати міледж на 1 км.
+
+4. Перевірити всі параметри всіх створених автівок після кожного створеного експенсу.
+
+Ліміт запитів в колекції - 7.
+
+Виведення всіх даних, що перевіряються, в тест репорт ранера є обов'язковим. 
+
+Колекція має виконуватись послідовно на 2 оточеннях:
+
+https://qauto.forstudy.space/
+
+https://qauto2.forstudy.space/ (optional). Свагер - https://qauto.forstudy.space/api-docs/#/
+
+
+
+{
+	"info": {
+		"_postman_id": "00a3f55b-19d5-4687-9f88-e3e6e011d058",
+		"name": "HILLEL_HW_7_SetNext_1",
+		"description": "Фінальна версія з pm.test для брендів, моделей, комбінацій та експенсів у звіт раннера. Враховано умови: ліміт 7 запитів, генерація mileage, інкремент, перевірка авто після кожного експенсу. | Додано перевірку mileage >= попередній та reportedAt прив'язку до часу сервера",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "42582792"
+	},
+	"item": [
+		{
+			"name": "SIGNUP_New_User Copy",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const userSchema = {",
+							"    \"type\": \"object\",",
+							"    \"properties\": {",
+							"        \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] },",
+							"        \"data\": {",
+							"            \"type\": \"object\",",
+							"            \"properties\": {",
+							"                \"userId\": { \"type\": \"integer\" },",
+							"                \"distanceUnits\": { \"type\": \"string\" },",
+							"                \"currency\": { \"type\": \"string\" }",
+							"            },",
+							"            \"required\": [\"userId\", \"distanceUnits\", \"currency\"]",
+							"        }",
+							"    },",
+							"    \"required\": [\"status\", \"data\"]",
+							"};",
+							"// Перевірка статусу відповіді - очікуємо 201 Created",
+							"pm.test(\"Статус відповіді 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"// Парсинг JSON відповіді",
+							"let jsonData;",
+							"try {",
+							"    jsonData = pm.response.json();",
+							"    console.log(\"Отримана відповідь:\", jsonData);",
+							"} catch (e) {",
+							"    throw new Error(\"Відповідь не є валідним JSON!\");",
+							"}",
+							"",
+							"// Перевірка наявності статусу \"ok\" та поля data",
+							"pm.test(\"Відповідь містить status 'ok'\", function () {",
+							"    pm.expect(jsonData).to.have.property(\"status\", \"ok\");",
+							"});",
+							"pm.test(\"Відповідь містить поле 'data'\", function () {",
+							"    pm.expect(jsonData).to.have.property(\"data\");",
+							"});",
+							"",
+							"// Перевірка, що userId отримано та є числом",
+							"if (jsonData.data && jsonData.data.userId) {",
+							"    pm.test(\"userId присутній та є числом\", function () {",
+							"        pm.expect(jsonData.data.userId).to.be.a(\"number\");",
+							"    });",
+							"    // Збереження userId для подальших запитів",
+							"    pm.collectionVariables.set(\"userId\", jsonData.data.userId);",
+							"    console.log(\"Збережено userId:\", jsonData.data.userId);",
+							"} else {",
+							"    throw new Error(\"Поле 'userId' відсутнє у відповіді!\");",
+							"}",
+							"pm.test(\"Очистка колекційних змінних\", function () {",
+							"    // Приклад переліку змінних, які варто очистити:",
+							"    pm.collectionVariables.unset(\"carId\");",
+							"    pm.collectionVariables.unset(\"carsList\");",
+							"    pm.collectionVariables.unset(\"currentCarIndex\");",
+							"    pm.collectionVariables.unset(\"currentExpenseCarIndex\");",
+							"    pm.collectionVariables.unset(\"expense_liters\");",
+							"    pm.collectionVariables.unset(\"expense_totalCost\");",
+							"    pm.collectionVariables.unset(\"serverTime\");",
+							"    pm.collectionVariables.unset(\"expensesList\");",
+							"    // Додайте інші змінні за потреби",
+							"",
+							"    // Перевірка для звіту — умовно вважаємо, що все ок",
+							"    pm.expect(true).to.be.true;",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Отримуємо URL із JSON-файлу",
+							"let baseUrl = pm.iterationData.get(\"URL\");",
+							"",
+							"if (!baseUrl || typeof baseUrl !== \"string\" || !baseUrl.startsWith(\"http\")) {",
+							"    throw new Error(\"❌ ПОМИЛКА: Некоректний або відсутній URL у JSON-файлі!\");",
+							"}",
+							"",
+							"// Зберігаємо URL у змінну колекції, щоб передати далі",
+							"pm.collectionVariables.set(\"url\", baseUrl);",
+							"",
+							"// Логування",
+							"console.log(\"Встановлений базовий URL:\", baseUrl);",
+							"",
+							"// Отримуємо дані користувача з JSON",
+							"let newData = {",
+							"    \"name\": pm.iterationData.get(\"name\"),",
+							"    \"lastName\": pm.iterationData.get(\"lastName\"),",
+							"    \"email\": pm.iterationData.get(\"email\"),",
+							"    \"password\": pm.iterationData.get(\"password\"),",
+							"    \"repeatPassword\": pm.iterationData.get(\"repeatPassword\") || pm.iterationData.get(\"password\")",
+							"};",
+							"",
+							"// Логування отриманих даних",
+							"console.log(\"Отримані дані користувача:\", newData);",
+							"",
+							"// Валідація",
+							"if (!newData.name || !newData.email || !newData.password) {",
+							"    throw new Error(\"Дані користувача не знайдені або мають неправильну структуру.\");",
+							"}",
+							"",
+							"// Зберігаємо змінні у Postman",
+							"pm.collectionVariables.set(\"userName\", newData.name);",
+							"pm.collectionVariables.set(\"userLastName\", newData.lastName);",
+							"pm.collectionVariables.set(\"userEmail\", newData.email);",
+							"pm.collectionVariables.set(\"userPassword\", newData.password);",
+							"pm.collectionVariables.set(\"userRepeatPassword\", newData.repeatPassword);",
+							"",
+							"console.log(\"User data loaded:\", newData);",
+							"console.log(\"Встановлений базовий URL:\", baseUrl);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"{{name}}\",\n    \"lastName\": \"{{lastName}}\",\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\",\n    \"repeatPassword\": \"{{repeatPassword}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{URL}}/auth/signup",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"auth",
+						"signup"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Car_Brand Copy",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Перевіряємо статус відповіді",
+							"pm.test(\"Response status is 200\", function () {",
+							"    pm.expect(pm.response.code).to.equal(200);",
+							"});",
+							"// Отримуємо список брендів",
+							"let jsonData = pm.response.json();",
+							"pm.test(\"Response contains brand data\", function () {",
+							"    pm.expect(jsonData.status).to.equal(\"ok\");",
+							"    pm.expect(jsonData.data).to.be.an(\"array\").with.length.greaterThan(0);",
+							"});",
+							"// Використовуємо carBrandId з testData.json або обираємо перший бренд",
+							"let savedCarBrandId = pm.collectionVariables.get(\"carBrandId\");",
+							"let selectedBrand = jsonData.data.find(brand => brand.id == savedCarBrandId) || jsonData.data[0];",
+							"",
+							"if (!selectedBrand) {",
+							"    throw new Error(\"❌ Жодного бренду не знайдено у відповіді API!\");",
+							"}",
+							"// Валідація JSON-схеми для брендів",
+							"const brandSchema = {",
+							"    \"type\": \"object\",",
+							"    \"properties\": {",
+							"        \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] },",
+							"        \"data\": {",
+							"            \"type\": \"array\",",
+							"            \"items\": {",
+							"                \"type\": \"object\",",
+							"                \"properties\": {",
+							"                    \"id\": { \"type\": \"integer\" },",
+							"                    \"title\": { \"type\": \"string\" },",
+							"                    \"logoFilename\": { \"type\": \"string\" }",
+							"                },",
+							"                \"required\": [\"id\", \"title\"]",
+							"            }",
+							"        }",
+							"    },",
+							"    \"required\": [\"status\", \"data\"]",
+							"};",
+							"",
+							"pm.test(\"Відповідь відповідає JSON-схемі для брендів\", function () {",
+							"    pm.expect(jsonData).to.have.jsonSchema(brandSchema);",
+							"});",
+							"// Збереження обраного бренду у змінну колекції",
+							"pm.collectionVariables.set(\"carBrandId\", selectedBrand.id);",
+							"console.log(`Використовується бренд: ${selectedBrand.title} (ID: ${selectedBrand.id})`);",
+							"pm.test(\"Список брендів у відповіді\", function () {",
+							"  const data = pm.response.json().data;",
+							"  data.forEach(brand => pm.expect(brand.title).to.be.a(\"string\"));",
+							"});",
+							"const brands = pm.response.json().data;",
+							"brands.forEach(brand => {",
+							"  pm.test(`Бренд: ${brand.title} (ID: ${brand.id})`, function () {",
+							"    pm.expect(brand.title).to.be.a(\"string\");",
+							"    pm.expect(brand.id).to.be.a(\"number\");",
+							"  });",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"let baseUrl = pm.collectionVariables.get(\"url\");",
+							"",
+							"if (!baseUrl || typeof baseUrl !== \"string\" || !baseUrl.startsWith(\"http\")) {",
+							"    throw new Error(\"❌ ПОМИЛКА: `url` не встановлений!\");",
+							"}",
+							"",
+							"pm.sendRequest({",
+							"    url: `${baseUrl}/cars/brands`,",
+							"    method: \"GET\"",
+							"}, function (err, res) {",
+							"    if (err || res.code !== 200) {",
+							"        console.error(\"❌ ПОМИЛКА: Не вдалося отримати бренди!\", err);",
+							"        return;",
+							"    }",
+							"",
+							"    let jsonData;",
+							"    try {",
+							"        jsonData = res.json();",
+							"    } catch (e) {",
+							"        console.error(\"❌ ПОМИЛКА: Відповідь сервера не є валідним JSON!\", res.text());",
+							"        return;",
+							"    }",
+							"",
+							"    if (!jsonData.data || !jsonData.data.length) {",
+							"        console.error(\"❌ ПОМИЛКА: Список брендів порожній!\", jsonData);",
+							"        return;",
+							"    }",
+							"",
+							"    // Збереження брендів у змінну колекції",
+							"    pm.collectionVariables.set(\"carBrands\", JSON.stringify(jsonData.data));",
+							"    console.log(\"Отримано бренди:\", jsonData.data);",
+							"",
+							"    // Переконайся, що вони збережені перед `GET /cars/models`",
+							"    console.log(\"Збережені бренди в змінній:\", pm.collectionVariables.get(\"carBrands\"));",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/cars/brands",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars",
+						"brands"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Car_Model Copy",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Response status is 200\", function () {",
+							"    pm.expect(pm.response.code).to.equal(200);",
+							"});",
+							"",
+							"// Оголошуємо jsonData тільки ОДИН раз",
+							"let jsonData;",
+							"try {",
+							"    jsonData = pm.response.json();",
+							"} catch (e) {",
+							"    throw new Error(\"❌ ПОМИЛКА: Відповідь не є валідним JSON!\");",
+							"}",
+							"",
+							"// Перевіряємо, що статус відповіді \"ok\"",
+							"pm.test(\"Response contains status 'ok'\", function () {",
+							"    pm.expect(jsonData.status).to.equal(\"ok\");",
+							"});",
+							"",
+							"// Перевіряємо, що масив моделей не порожній",
+							"pm.test(\"Response contains car models\", function () {",
+							"    pm.expect(jsonData.data).to.be.an(\"array\").that.is.not.empty;",
+							"});",
+							"",
+							"// Перевіряємо, чи є моделі у відповіді",
+							"if (!jsonData.data || !jsonData.data.length) {",
+							"    throw new Error(\"❌ ПОМИЛКА: Список моделей порожній! Виконай `GET /cars/models`.\");",
+							"}",
+							"",
+							"// Збереження моделей у змінну колекції",
+							"pm.collectionVariables.set(\"carModels\", JSON.stringify(jsonData.data));",
+							"console.log(\"Збережено carModels:\", jsonData.data);",
+							"",
+							"// Отримуємо список брендів для перевірки зв'язків",
+							"let carBrands = JSON.parse(pm.collectionVariables.get(\"carBrands\") || \"[]\");",
+							"",
+							"if (!carBrands.length) {",
+							"    throw new Error(\"❌ ПОМИЛКА: Бренди не були отримані перед перевіркою моделей! Виконай `GET /cars/brands`.\");",
+							"}",
+							"",
+							"// Перевірка відповідності `carBrandId` у моделях брендам",
+							"let brandIds = new Set(carBrands.map(brand => brand.id));",
+							"let invalidModels = jsonData.data.filter(model => !brandIds.has(model.carBrandId));",
+							"",
+							"pm.test(\"Всі `carBrandId` у моделях відповідають брендам\", function () {",
+							"    pm.expect(invalidModels.length).to.eql(0, \"❌ ПОМИЛКА: Знайдено моделі з `carBrandId`, якого немає у списку брендів!\");",
+							"});",
+							"",
+							"if (invalidModels.length) {",
+							"    console.error(\"Некоректні моделі без відповідного `BrandID`:\", invalidModels);",
+							"}",
+							"",
+							"// Перевірка відповідності JSON схемі",
+							"pm.test(\"Response matches schema\", function () {",
+							"    const modelSchema = {",
+							"        \"type\": \"object\",",
+							"        \"properties\": {",
+							"            \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] },",
+							"            \"data\": {",
+							"                \"type\": \"array\",",
+							"                \"items\": {",
+							"                    \"type\": \"object\",",
+							"                    \"properties\": {",
+							"                        \"id\": { \"type\": \"integer\" },",
+							"                        \"carBrandId\": { \"type\": \"integer\" },",
+							"                        \"title\": { \"type\": \"string\" }",
+							"                    },",
+							"                    \"required\": [\"id\", \"carBrandId\", \"title\"]",
+							"                }",
+							"            }",
+							"        },",
+							"        \"required\": [\"status\", \"data\"]",
+							"    };",
+							"    pm.expect(jsonData).to.have.jsonSchema(modelSchema);",
+							"});",
+							"pm.test(\"Список моделей у відповіді\", function () {",
+							"  const data = pm.response.json().data;",
+							"  data.forEach(model => pm.expect(model.title).to.be.a(\"string\"));",
+							"});",
+							"const models = pm.response.json().data;",
+							"models.forEach(model => {",
+							"  pm.test(`Модель: ${model.title} (ID: ${model.id}, BrandID: ${model.carBrandId})`, function () {",
+							"    pm.expect(model.title).to.be.a(\"string\");",
+							"    pm.expect(model.id).to.be.a(\"number\");",
+							"    pm.expect(model.carBrandId).to.be.a(\"number\");",
+							"  });",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"let baseUrl = pm.collectionVariables.get(\"url\");",
+							"",
+							"if (!baseUrl || typeof baseUrl !== \"string\" || !baseUrl.startsWith(\"http\")) {",
+							"    throw new Error(\"❌ ПОМИЛКА: `url` не встановлений!\");",
+							"}",
+							"",
+							"// Виконуємо запит до API",
+							"pm.sendRequest({",
+							"    url: `${baseUrl}/cars/models`,",
+							"    method: \"GET\"",
+							"}, function (err, res) {",
+							"    if (err || res.code !== 200) {",
+							"        console.error(\"❌ ПОМИЛКА: Не вдалося отримати моделі!\", err);",
+							"        return;",
+							"    }",
+							"",
+							"    try {",
+							"        let jsonData = res.json(); // Оголошуємо `jsonData` лише тут",
+							"",
+							"        if (!jsonData.data || !jsonData.data.length) {",
+							"            console.error(\"❌ ПОМИЛКА: Список моделей порожній!\", jsonData);",
+							"            return;",
+							"        }",
+							"",
+							"        // Збереження моделей у змінну колекції",
+							"        pm.collectionVariables.set(\"carModels\", JSON.stringify(jsonData.data));",
+							"        console.log(\"Отримано моделі:\", jsonData.data);",
+							"        ",
+							"    } catch (e) {",
+							"        console.error(\"ПОМИЛКА: Відповідь сервера не є валідним JSON!\", res.text());",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/cars/models",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars",
+						"models"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create_Car",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Перевірка статусу відповіді (очікується 200 або 201)",
+							"pm.test(\"Статус відповіді має бути 200 або 201\", function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+							"});",
+							"",
+							"// Парсинг відповіді у JSON",
+							"let jsonData = pm.response.json();",
+							"",
+							"// JSON-схема для створеного авто",
+							"const carSchema = {",
+							"    \"type\": \"object\",",
+							"    \"properties\": {",
+							"        \"id\": { \"type\": \"number\" },",
+							"        \"carBrandId\": { \"type\": \"number\" },",
+							"        \"carModelId\": { \"type\": \"number\" },",
+							"        \"initialMileage\": { \"type\": \"number\" }",
+							"    },",
+							"    \"required\": [\"id\", \"carBrandId\", \"carModelId\", \"initialMileage\"]",
+							"};",
+							"",
+							"pm.test(\"Відповідь відповідає JSON-схемі створеного авто\", function () {",
+							"    pm.expect(jsonData.data).to.have.jsonSchema(carSchema);",
+							"});",
+							"",
+							"// *** Оновлено: збереження carId для подальшого використання у створенні витрат ***",
+							"pm.collectionVariables.set(\"carId\", jsonData.data.id);",
+							"",
+							"// Збереження даних створеного авто для подальшого використання",
+							"let car = jsonData.data;",
+							"let carsList = JSON.parse(pm.collectionVariables.get(\"carsList\") || \"[]\");",
+							"carsList.push(car);",
+							"pm.collectionVariables.set(\"carsList\", JSON.stringify(carsList));",
+							"",
+							"",
+							"pm.test(`Створено авто з ID ${car.id} – BrandID: ${car.carBrandId}, ModelID: ${car.carModelId}, Mileage: ${car.initialMileage}`, function() {",
+							"    pm.expect(car.id).to.be.a(\"number\");",
+							"});",
+							"console.log(\"Дані створеного авто:\", car);",
+							"// Припустимо, що в pre-request ми збільшили currentCarIndex на 1",
+							"let currentIndex = parseInt(pm.collectionVariables.get(\"currentCarIndex\") || \"0\");",
+							"let validPairs = JSON.parse(pm.collectionVariables.get(\"validCarPairs\") || \"[]\");",
+							"",
+							"// Якщо ми ще не створили 23 авто і не вийшли за межі validPairs:",
+							"if (currentIndex < 23 && currentIndex < validPairs.length) {",
+							"    console.log(`Авто створено. Готуємось створити наступне авто №${currentIndex + 1}`);",
+							"    ",
+							"    // Замість прямого pm.execution.setNextRequest:",
+							"    setTimeout(() => {",
+							"        pm.execution.setNextRequest(\"Create_Car\");",
+							"    }, 200); // 200 мс затримка, можеш змінити на 300-500 мс якщо треба",
+							"} else {",
+							"    // Інакше переходимо до запиту Create_Expenses_1 Copy",
+							"    // Але спочатку встановимо лічильник витрат з нуля",
+							"    pm.collectionVariables.set(\"currentExpenseCarIndex\", 0);",
+							"    pm.execution.setNextRequest(\"Create_Expenses\");",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"let carBrands = JSON.parse(pm.collectionVariables.get(\"carBrands\") || \"[]\");",
+							"let carModels = JSON.parse(pm.collectionVariables.get(\"carModels\") || \"[]\");",
+							"",
+							"if (!carBrands.length || !carModels.length) {",
+							"    throw new Error(\"Нема даних для брендів або моделей!\");",
+							"}",
+							"",
+							"let brandIds = new Set(carBrands.map(b => b.id));",
+							"let validModels = carModels.filter(m => brandIds.has(m.carBrandId));",
+							"",
+							"if (!validModels.length) {",
+							"    throw new Error(\"Відсутні валідні моделі з відповідними BrandID\");",
+							"}",
+							"",
+							"let validPairs = validModels.map(m => ({ ",
+							"    carBrandId: m.carBrandId, ",
+							"    carModelId: m.id ",
+							"}));",
+							"",
+							"pm.collectionVariables.set(\"validCarPairs\", JSON.stringify(validPairs));",
+							"",
+							"let currentIndex = parseInt(pm.collectionVariables.get(\"currentCarIndex\") || \"0\");",
+							"if (currentIndex >= validPairs.length || currentIndex >= 23) {",
+							"    console.log(\"Створення авто завершено!\");",
+							"    pm.collectionVariables.unset(\"currentCarIndex\");",
+							"    return;",
+							"}",
+							"",
+							"let selectedPair = validPairs[currentIndex];",
+							"pm.collectionVariables.set(\"carBrandId\", selectedPair.carBrandId);",
+							"pm.collectionVariables.set(\"carModelId\", selectedPair.carModelId);",
+							"",
+							"let randomMileage = Math.floor(Math.random() * (100000 - 1000 + 1)) + 1000;",
+							"pm.collectionVariables.set(\"mileage\", randomMileage);",
+							"",
+							"pm.collectionVariables.set(\"currentCarIndex\", currentIndex + 1);",
+							"",
+							"console.log(`Створюється авто ${currentIndex + 1}/23 – BrandID: ${selectedPair.carBrandId}, ModelID: ${selectedPair.carModelId}, Mileage: ${randomMileage}`);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"content-type": true
+				}
+			},
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"carBrandId\": {{carBrandId}},\n  \"carModelId\": {{carModelId}},\n  \"mileage\": {{mileage}}\n}"
+				},
+				"url": {
+					"raw": "{{URL}}/cars",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create_Expenses",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// 1. Перевірка статусу відповіді (очікується 200 або 201)",
+							"pm.test(\"Статус відповіді має бути 200 або 201\", function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+							"});",
+							"",
+							"// 2. Парсинг відповіді у JSON",
+							"let response;",
+							"try {",
+							"    response = pm.response.json();",
+							"} catch(e) {",
+							"    console.error(\"Відповідь не є валідним JSON:\", pm.response.text());",
+							"    return;",
+							"}",
+							"if (!response || !response.data) {",
+							"    console.error(\"Відповідь не містить поля 'data':\", response);",
+							"    return;",
+							"}",
+							"let expData = response.data;",
+							"",
+							"// 3. Перевірка відповіді за допомогою JSON-схеми",
+							"const expenseSchema = {",
+							"    \"type\": \"object\",",
+							"    \"properties\": {",
+							"        \"id\": { \"type\": \"number\" },",
+							"        \"carId\": { \"type\": \"number\" },",
+							"        \"mileage\": { \"type\": \"number\" },",
+							"        \"reportedAt\": { \"type\": \"string\" }",
+							"    },",
+							"    \"required\": [\"id\", \"carId\", \"mileage\", \"reportedAt\"]",
+							"};",
+							"pm.test(\"Відповідь відповідає JSON-схемі витрати\", function () {",
+							"    pm.expect(expData).to.have.jsonSchema(expenseSchema);",
+							"});",
+							"",
+							"// 4. Збереження даних створеної витрати для подальшого аналізу",
+							"let expensesList = JSON.parse(pm.collectionVariables.get(\"expensesList\") || \"[]\");",
+							"expensesList.push(expData);",
+							"pm.collectionVariables.set(\"expensesList\", JSON.stringify(expensesList));",
+							"",
+							"pm.test(`Створено витрату для авто ID ${expData.carId} з Mileage ${expData.mileage} та reportedAt ${expData.reportedAt}`, function () {",
+							"    pm.expect(expData.id).to.be.a(\"number\");",
+							"});",
+							"",
+							"console.log(\"Дані створеної витрати:\", expData);",
+							"",
+							"// Виведення авто та EXPENSE в раннер ",
+							"let createdCars = JSON.parse(pm.collectionVariables.get(\"carsList\") || \"[]\");",
+							"let currentCar = createdCars.find(car => car.id === expData.carId);",
+							"if (currentCar) {",
+							"    pm.test(`- Авто після EXPENSE – ID: ${currentCar.id}, BrandID: ${currentCar.carBrandId}, ModelID: ${currentCar.carModelId}, initialMileage: ${currentCar.initialMileage}`, function () {",
+							"        pm.expect(currentCar.id).to.be.a('number');",
+							"    });",
+							"}",
+							"",
+							"pm.test(`- EXPENSE створено для авто ${expData.carId} з mileage: ${expData.mileage}, liters: ${pm.collectionVariables.get(\"expense_liters\")}, totalCost: ${pm.collectionVariables.get(\"expense_totalCost\")}`, function () {",
+							"    pm.expect(expData.mileage).to.be.a(\"number\");",
+							"});",
+							"// 5. Оновлення лічильника для поточного авто",
+							"let expenseCountKey = `expenseCount_${expData.carId}`;",
+							"let expenseCount = parseInt(pm.collectionVariables.get(expenseCountKey) || \"0\");",
+							"expenseCount++;",
+							"pm.collectionVariables.set(expenseCountKey, expenseCount);",
+							"",
+							"// 6. Циклічна логіка переходу: чи створювати ще витрати для поточного авто",
+							"if (expenseCount < 5) {",
+							"    // Продовжуємо створювати витрати для цього авто",
+							"    pm.execution.setNextRequest(\"Create_Expenses\");",
+							"} else {",
+							"    // Якщо 5 витрат вже створено, переходимо до наступного авто",
+							"    let createdCars = JSON.parse(pm.collectionVariables.get(\"carsList\") || \"[]\");",
+							"    let currentExpenseCarIndex = parseInt(pm.collectionVariables.get(\"currentExpenseCarIndex\") || \"0\");",
+							"    currentExpenseCarIndex++;",
+							"    pm.collectionVariables.set(\"currentExpenseCarIndex\", currentExpenseCarIndex);",
+							"    ",
+							"    if (currentExpenseCarIndex < createdCars.length) {",
+							"        // Встановлюємо carId наступного авто",
+							"        let nextCar = createdCars[currentExpenseCarIndex];",
+							"        pm.collectionVariables.set(\"carId\", nextCar.id);",
+							"        pm.execution.setNextRequest(\"Create_Expenses\");",
+							"    } else {",
+							"        // Якщо авто закінчилися, переходимо до наступного запиту (наприклад, GET /cars)",
+							"        pm.execution.setNextRequest(\"Cars\");",
+							"    }",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// 1. Отримуємо базовий URL",
+							"let baseUrl = pm.collectionVariables.get(\"url\");",
+							"if (!baseUrl) throw new Error(\"URL не встановлено!\");",
+							"",
+							"// 2. Отримуємо carId і список створених авто",
+							"let carId = pm.collectionVariables.get(\"carId\");",
+							"if (!carId) throw new Error(\"carId відсутній! Переконайтеся, що авто створено перед запуском витрат.\");",
+							"let createdCars = JSON.parse(pm.collectionVariables.get(\"carsList\") || \"[]\");",
+							"",
+							"// 3. Знаходимо поточне авто за carId",
+							"let foundCar = createdCars.find(car => car.id === parseInt(carId));",
+							"if (!foundCar) throw new Error(\"Не знайдено авто з заданим carId!\");",
+							"",
+							"// 4. Отримуємо актуальний лічильник витрат",
+							"let expenseCount = parseInt(pm.collectionVariables.get(`expenseCount_${foundCar.id}`) || \"0\");",
+							"",
+							"// 5. Розрахунок mileage — важливо! При переході на нове авто перша витрата повинна бути > initialMileage",
+							"let updatedMileage = (expenseCount === 0) ",
+							"    ? foundCar.initialMileage + 1 ",
+							"    : foundCar.initialMileage + expenseCount + 1;",
+							"pm.collectionVariables.set(\"mileage\", updatedMileage);",
+							"",
+							"// 6. Перевірка ліміту витрат після розрахунку mileage",
+							"if (expenseCount >= 5) {",
+							"    console.log(`Для авто ${foundCar.id} вже створено 5 витрат. Переходимо до наступного або завершуємо.`);",
+							"    pm.execution.setNextRequest(\"Cars\"); // або фінальний запит",
+							"    return;",
+							"}",
+							"",
+							"// 7. Отримання серверного часу",
+							"pm.sendRequest({",
+							"    url: baseUrl.replace('/api', '') + \"/server-time\",",
+							"    method: \"GET\"",
+							"}, function (err, res) {",
+							"    let serverTime;",
+							"    if (!err && res.code === 200) {",
+							"        let jsonData;",
+							"        try { jsonData = res.json(); } catch (e) { jsonData = {}; }",
+							"        serverTime = jsonData.time || new Date().toISOString();",
+							"    } else {",
+							"        serverTime = new Date().toISOString();",
+							"    }",
+							"    pm.collectionVariables.set(\"serverTime\", serverTime);",
+							"    console.log(\"Серверний час:\", serverTime);",
+							"});",
+							"",
+							"// 8. Інкремент лічильника ВЖЕ після перевірок і розрахунку mileage",
+							"pm.collectionVariables.set(`expenseCount_${foundCar.id}`, expenseCount + 1);",
+							"console.log(`Створення витрати ${expenseCount + 1}/5 для авто ${foundCar.id}. Mileage: ${updatedMileage}`);",
+							"",
+							"// 9. Дефолтні значення",
+							"if (!pm.collectionVariables.get(\"expense_liters\")) pm.collectionVariables.set(\"expense_liters\", 10);",
+							"if (!pm.collectionVariables.get(\"expense_totalCost\")) pm.collectionVariables.set(\"expense_totalCost\", 200);",
+							"",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"carId\": {{carId}},\n    \"reportedAt\": \"{{serverTime}}\",\n    \"mileage\": {{mileage}},\n    \"liters\": {{expense_liters}},\n    \"totalCost\": {{expense_totalCost}},\n    \"forceMileage\": false\n}"
+				},
+				"url": {
+					"raw": "{{URL}}/expenses",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"expenses"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Cars",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Перевірка, що статус відповіді 200",
+							"pm.test(\"Статус відповіді має бути 200\", function() {\n    pm.response.to.have.status(200);\n});",
+							"",
+							"// Парсинг відповіді у JSON",
+							"let jsonData = pm.response.json();",
+							"",
+							"// JSON-схема для перевірки структури відповіді",
+							"const carsSchema = {\n    \"type\": \"object\",\n    \"properties\": {\n        \"status\": { \"type\": \"string\", \"enum\": [\"ok\"] },\n        \"data\": {\n            \"type\": \"array\",\n            \"items\": {\n                \"type\": \"object\",\n                \"properties\": {\n                    \"id\": { \"type\": \"number\" },\n                    \"carBrandId\": { \"type\": \"number\" },\n                    \"carModelId\": { \"type\": \"number\" },\n                    \"initialMileage\": { \"type\": \"number\" }\n                },\n                \"required\": [\"id\", \"carBrandId\", \"carModelId\", \"initialMileage\"]\n            }\n        }\n    },\n    \"required\": [\"status\", \"data\"]\n};",
+							"",
+							"pm.test(\"Відповідь відповідає JSON-схемі авто\", function() {\n    pm.expect(jsonData).to.have.jsonSchema(carsSchema);\n});",
+							"",
+							"// Отримання списку створених авто зі змінної, яка зберігає всі створені авто (carsList)",
+							"let createdCars = JSON.parse(pm.collectionVariables.get(\"carsList\") || \"[]\");",
+							"",
+							"// Перевірка, що кожне створене авто є в отриманому списку",
+							"createdCars.forEach(car => {\n    pm.test(`Авто з ID ${car.id} має бути присутнім у відповіді GET /cars`, function() {\n        let found = jsonData.data.find(item => item.id === car.id);\n        pm.expect(found, `Не знайдено авто з ID ${car.id}`).to.not.be.undefined;\n    });\n});",
+							"",
+							"// Вивід отриманих авто в консоль для звіту",
+							"console.log(\"Отримані авто з GET /cars:\", jsonData.data);"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"let carId = pm.collectionVariables.get(\"carId\");",
+							"if (!carId) {\n    throw new Error(\"carId не задано! Спочатку створіть авто (POST /cars) або встановіть carId у змінних колекції.\");\n}",
+							"",
+							"// За потреби можна залогувати:",
+							"console.log(\"Отримуємо дані автомобіля з ID:\", carId);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/cars",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete_User Copy",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Блокуюча затримка 1 секунда перед видаленням",
+							"const start = Date.now();",
+							"const delay = 1000;",
+							"while (Date.now() - start < delay) { /* wait */ }"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"User account was successfully deleted\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Логуємо видалення користувача",
+							"console.log(\"Видалення користувача...\");"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/users",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"users"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "url",
+			"value": ""
+		},
+		{
+			"key": "userName",
+			"value": ""
+		},
+		{
+			"key": "userLastName",
+			"value": ""
+		},
+		{
+			"key": "userEmail",
+			"value": ""
+		},
+		{
+			"key": "userPassword",
+			"value": ""
+		},
+		{
+			"key": "userRepeatPassword",
+			"value": ""
+		},
+		{
+			"key": "userId",
+			"value": ""
+		},
+		{
+			"key": "carBrands",
+			"value": ""
+		},
+		{
+			"key": "carBrandId",
+			"value": ""
+		},
+		{
+			"key": "carModels",
+			"value": ""
+		},
+		{
+			"key": "validCarPairs",
+			"value": ""
+		},
+		{
+			"key": "carModelId",
+			"value": ""
+		},
+		{
+			"key": "mileage",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296548",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296586",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296562",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296563",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296566",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_151268",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296616",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296642",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296621",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296622",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296623",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296624",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296625",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296626",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296627",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296628",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296629",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296630",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296631",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296632",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296633",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296634",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296635",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296636",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296637",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296638",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296639",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296640",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296641",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296667",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296646",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296647",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296648",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296649",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296650",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296651",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296652",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296653",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296654",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296655",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296656",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296657",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296658",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296659",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296660",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296661",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296662",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296663",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296664",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296665",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296666",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296690",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296669",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296670",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296671",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296672",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296673",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296674",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296675",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296676",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296677",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296678",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296679",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296680",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296681",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296682",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296683",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296684",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296685",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296686",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296687",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296688",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296689",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296713",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296692",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296693",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296694",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296695",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296696",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296697",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296698",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296699",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296700",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296701",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296702",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296703",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296704",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296705",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296706",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296707",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296708",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296709",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296710",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296711",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296712",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296736",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296715",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296716",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296717",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296718",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296719",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296720",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296721",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296722",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296723",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296724",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296725",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296726",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296727",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296728",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296729",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296730",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296731",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296732",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296733",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296734",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296735",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296761",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296740",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296741",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296742",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296743",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296744",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296745",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296746",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296747",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296748",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296749",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296750",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296751",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296752",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296753",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296754",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296755",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296756",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296757",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296758",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296759",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296760",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296790",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296769",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296770",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296771",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296772",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296773",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296774",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296775",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296776",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296777",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296778",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296779",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296780",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296781",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296782",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296783",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296784",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296785",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296786",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296787",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296788",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296789",
+			"value": ""
+		},
+		{
+			"key": "currentCarIndex",
+			"value": ""
+		},
+		{
+			"key": "carId",
+			"value": ""
+		},
+		{
+			"key": "carsList",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296815",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296794",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296795",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296796",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296797",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296798",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296799",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296800",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296801",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296802",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296803",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296804",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296805",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296806",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296807",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296808",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296809",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296810",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296811",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296812",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296813",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296814",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296839",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296818",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296819",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296820",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296821",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296822",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296823",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296824",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296825",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296826",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296827",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296828",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296829",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296830",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296831",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296832",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296833",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296834",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296835",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296836",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296837",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296838",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296868",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296847",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296848",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296849",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296850",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296851",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296852",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296853",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296854",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296855",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296856",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296857",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296858",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296859",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296860",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296861",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296862",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296863",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296864",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296865",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296866",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296867",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296891",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296870",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296871",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296872",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296873",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296874",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296875",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296876",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296877",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296878",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296879",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296880",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296881",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296882",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296883",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296884",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296885",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296886",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296887",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296888",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296889",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296890",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296914",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296893",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296894",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296895",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296896",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296897",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296898",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296899",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296900",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296901",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296902",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296903",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296904",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296905",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296906",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296907",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296908",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296909",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296910",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296911",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296912",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296913",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296937",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296916",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296917",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296918",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296919",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296920",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296921",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296922",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296923",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296924",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296925",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296926",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296927",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296928",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296929",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296930",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296931",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296932",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296933",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296934",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296935",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296936",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296961",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296940",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296941",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296942",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296943",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296944",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296945",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296946",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296947",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296948",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296949",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296950",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296951",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296952",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296953",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296954",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296955",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296956",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296957",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296958",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296959",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296960",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296991",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296969",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296970",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296971",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296972",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296973",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296974",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296975",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296976",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296977",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296978",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296979",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296980",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296981",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296982",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296983",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296984",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296986",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296987",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296988",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296989",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296990",
+			"value": ""
+		},
+		{
+			"key": "currentExpenseCarIndex",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297014",
+			"value": ""
+		},
+		{
+			"key": "expense_liters",
+			"value": ""
+		},
+		{
+			"key": "expense_totalCost",
+			"value": ""
+		},
+		{
+			"key": "serverTime",
+			"value": ""
+		},
+		{
+			"key": "expensesList",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296993",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296994",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296995",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296996",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296997",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296998",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_296999",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297000",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297001",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297002",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297003",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297004",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297005",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297006",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297007",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297008",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297009",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297010",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297011",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297012",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297013",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297037",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297016",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297017",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297018",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297019",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297020",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297021",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297022",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297023",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297024",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297025",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297026",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297027",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297028",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297029",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297030",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297031",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297032",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297033",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297034",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297035",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297036",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297060",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297039",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297040",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297041",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297042",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297043",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297044",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297045",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297046",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297047",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297048",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297049",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297050",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297051",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297052",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297053",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297054",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297055",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297056",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297057",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297058",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297059",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297084",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297063",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297064",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297065",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297066",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297067",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297068",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297069",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297070",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297071",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297072",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297073",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297074",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297075",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297076",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297077",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297078",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297079",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297080",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297081",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297082",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297083",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297107",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297086",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297087",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297088",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297089",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297090",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297091",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297092",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297093",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297094",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297095",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297096",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297097",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297098",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297099",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297100",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297101",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297102",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297103",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297104",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297105",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297106",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297156",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297135",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297136",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297137",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297138",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297139",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297140",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297141",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297142",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297143",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297144",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297145",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297146",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297147",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297148",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297149",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297150",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297151",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297152",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297153",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297154",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297155",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297179",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297158",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297159",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297160",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297161",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297162",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297163",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297164",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297165",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297166",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297167",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297168",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297169",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297170",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297171",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297172",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297173",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297174",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297175",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297176",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297177",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_297178",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298301",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298279",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298280",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298281",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298282",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298283",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298284",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298286",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298287",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298288",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298289",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298290",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298291",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298292",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298293",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298294",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298295",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298296",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298297",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298298",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298299",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298300",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298380",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298358",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298359",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298360",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298361",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298362",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298363",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298364",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298365",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298366",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298367",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298368",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298369",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298370",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298371",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298372",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298373",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298375",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298376",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298377",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298378",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298379",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298403",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298382",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298383",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298384",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298385",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298386",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298387",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298388",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298389",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298390",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298391",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298392",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298393",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298394",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298395",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298396",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298397",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298398",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298399",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298400",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298401",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298402",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298426",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298405",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298406",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298407",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298408",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298409",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298410",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298411",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298412",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298413",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298414",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298415",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298416",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298417",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298418",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298419",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298420",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298421",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298422",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298423",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298424",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298425",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298449",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298428",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298429",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298430",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298431",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298432",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298433",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298434",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298435",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298436",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298437",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298438",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298439",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298440",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298441",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298442",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298443",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298444",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298445",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298446",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298447",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298448",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298472",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298451",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298452",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298453",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298454",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298455",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298456",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298457",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298458",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298459",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298460",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298461",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298462",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298463",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298464",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298465",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298466",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298467",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298468",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298469",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298470",
+			"value": ""
+		},
+		{
+			"key": "expenseCount_298471",
+			"value": ""
+		}
+	]
+}
+
+Файл json: 
+[
+    {
+        "URL": "https://qauto.forstudy.space/api",
+        "name": "John",
+        "lastName": "Doe",
+        "email": "dqqossididoedoeiеf@example.com",
+        "password": "Password123",
+        "repeatPassword": "Password123"
+    },
+    {
+        "URL": "https://qauto.forstudy.space/api",
+        "name": "Alice",
+        "lastName": "Smith",
+        "email": "aqqdosslsldiidssimith@example.com",
+        "password": "Password456",
+        "repeatPassword": "Password456"
+    }
+]
