@@ -1,0 +1,569 @@
+1. Створити користувача. Дані користувача підтягнути із зовнішнього .json файлу.
+
+2. Створити автівку. Brand ID згенерувати випадково з огляду на допустимі значення брендів. Model ID згенерувати випадково з урахуванням згенерованого бренду. Міледж згенерувати випадково у валідних межах.
+
+3. Перевірити Name та LastName користувача. Для перевірки використати дані з зовнішнього файлу. Переконатись, що це той самий користувач.
+
+4. Перевірити параметри автівки. Свагер - https://qauto.forstudy.space/api-docs/#/
+
+
+{
+	"info": {
+		"_postman_id": "290b92d5-69e2-4c1f-9831-0cd8627a2070",
+		"name": "HILLEL_HW_5_CSV_Randomization",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "42582792"
+	},
+	"item": [
+		{
+			"name": "SIGNUP_NEW_USER",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Отримуємо JSON-відповідь API",
+							"let response = pm.response.json();",
+							"console.log(\"Full API Response:\", response);",
+							"",
+							"// Перевіряємо статус код",
+							"pm.test(\"User successfully registered\", function () {",
+							"    pm.expect(pm.response.code).to.equal(201);",
+							"});",
+							"",
+							"// Перевіряємо, чи є `data` та `userId`",
+							"if (!response.data || !response.data.userId) {",
+							"    throw new Error(\"User ID is missing in API response. Registration failed!\");",
+							"}",
+							"",
+							"// Зберігаємо User ID в змінну колекції",
+							"pm.collectionVariables.set(\"userId\", response.data.userId);",
+							"console.log(\"User successfully created. ID:\", response.data.userId);"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.environment.set(\"URL\", \"https://qauto.forstudy.space/api\");",
+							"console.log(\"Set URL:\", pm.environment.get(\"URL\"));",
+							"// Отримуємо дані з JSON",
+							"let userData = {",
+							"    \"name\": pm.iterationData.get(\"name\"),",
+							"    \"lastName\": pm.iterationData.get(\"lastName\"),",
+							"    \"email\": pm.iterationData.get(\"email\"),",
+							"    \"password\": pm.iterationData.get(\"password\"),",
+							"    \"repeatPassword\": pm.iterationData.get(\"repeatPassword\") || pm.iterationData.get(\"password\")",
+							"};",
+							"console.log(\"Отримані дані:\", userData);",
+							"",
+							"if (!userData.name || !userData.email) {",
+							"    throw new Error(\"Дані користувача не знайдені або мають неправильну структуру.\");",
+							"}",
+							"// Зберігаємо змінні",
+							"pm.collectionVariables.set(\"userName\", userData.name);",
+							"pm.collectionVariables.set(\"userLastName\", userData.lastName);",
+							"pm.collectionVariables.set(\"userEmail\", userData.email);",
+							"pm.collectionVariables.set(\"userPassword\", userData.password);",
+							"pm.collectionVariables.set(\"userRepeatPassword\", userData.repeatPassword);",
+							"",
+							"console.log(\"User data loaded:\", userData);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"{{name}}\",\n    \"lastName\": \"{{lastName}}\",\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\",\n    \"repeatPassword\": \"{{repeatPassword}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{URL}}/auth/signup",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"auth",
+						"signup"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET_CAR_BRAND",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"let jsonData = pm.response.json();",
+							"",
+							"// Переконуємося, що є хоча б один бренд",
+							"pm.test(\"Car brands list received\", function () {",
+							"    pm.expect(pm.response.code).to.equal(200);",
+							"    pm.expect(jsonData.data).to.be.an(\"array\").that.is.not.empty;",
+							"});",
+							"// Випадково вибираємо бренд",
+							"let brand = jsonData.data[Math.floor(Math.random() * jsonData.data.length)];",
+							"pm.collectionVariables.set(\"carBrandId\", brand.id);",
+							"console.log(\"Обраний бренд:\", brand.title, \"| ID:\", brand.id);"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Очистимо змінні перед викликом нового бренду",
+							"pm.collectionVariables.unset(\"carBrandId\");",
+							"",
+							"// Логування виклику",
+							"console.log(\"Викликаємо GET_CAR_BRAND\");"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/cars/brands",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars",
+						"brands"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET_CAR_MODEL",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"let brandId = parseInt(pm.collectionVariables.get(\"carBrandId\"));",
+							"",
+							"if (!brandId) {",
+							"    throw new Error(\"`brandId` не збережено! Виконайте `GET_CAR_BRAND` перед цим запитом.\");",
+							"}",
+							"",
+							"let jsonData = pm.response.json();",
+							"pm.test(\"Car models list received\", function () {",
+							"    pm.expect(pm.response.code).to.equal(200);",
+							"    pm.expect(jsonData.data).to.be.an(\"array\").that.is.not.empty;",
+							"});",
+							"// Фільтруємо лише моделі, що належать обраному бренду",
+							"let models = jsonData.data.filter(m => m.carBrandId === brandId);",
+							"",
+							"if (!models.length) {",
+							"    throw new Error(`Для бренду ID ${brandId} не знайдено моделей.`);",
+							"}",
+							"// Випадково вибираємо модель із відповідних",
+							"let model = models[Math.floor(Math.random() * models.length)];",
+							"pm.collectionVariables.set(\"carModelId\", model.id);",
+							"console.log(\"Вибрана модель:\", model.title, \"| ID:\", model.id, \"| Brand ID:\", model.carBrandId);",
+							"",
+							"// Перевіряємо, що обрана модель відповідає обраному бренду",
+							"pm.test(\"Selected model belongs to correct brand\", function () {",
+							"    pm.expect(model.carBrandId).to.equal(brandId);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Функція для вибору випадкового елемента з масиву",
+							"function getRandomElement(arr) {",
+							"    if (!Array.isArray(arr) || arr.length === 0) {",
+							"        throw new Error(\"Неможливо отримати випадковий елемент: масив порожній або не є масивом.\");",
+							"    }",
+							"    return arr[Math.floor(Math.random() * arr.length)];",
+							"}",
+							"// Отримуємо бренди",
+							"pm.sendRequest({",
+							"    url: pm.environment.get(\"URL\") + \"/cars/brands\",",
+							"    method: \"GET\"",
+							"}, function (err, res) {",
+							"    if (err || res.code !== 200) {",
+							"        console.log(\"Помилка при отриманні брендів\", err || res.json());",
+							"        return;",
+							"    }",
+							"",
+							"    let brands = res.json().data;",
+							"    if (!brands || brands.length === 0) {",
+							"        throw new Error(\"API повернуло пустий список брендів!\");",
+							"    }",
+							"",
+							"    let brand = getRandomElement(brands);",
+							"    let brandId = brand.id.toString();",
+							"    ",
+							"    // Перевірка, чи brandId коректний",
+							"    if (!brandId || isNaN(brandId)) {",
+							"        throw new Error(\"brandId має некоректне значення: \" + brandId);",
+							"    }",
+							"",
+							"    pm.collectionVariables.set(\"brandId\", brandId);",
+							"    console.log(`Вибраний бренд: ${brand.title} (ID: ${brandId})`);",
+							"",
+							"    // Отримуємо моделі для обраного бренду",
+							"    pm.sendRequest({",
+							"        url: pm.environment.get(\"URL\") + `/cars/models?brandId=${brandId}`,",
+							"        method: \"GET\"",
+							"    }, function (err, res) {",
+							"        if (err || res.code !== 200) {",
+							"            console.log(\"Помилка при отриманні моделей\", err || res.json());",
+							"            return;",
+							"        }",
+							"",
+							"        let models = res.json().data;",
+							"        if (!models || models.length === 0) {",
+							"            throw new Error(\"API повернуло пустий список моделей!\");",
+							"        }",
+							"        let model = getRandomElement(models);",
+							"        let modelId = model.id.toString();",
+							"        ",
+							"        // Перевірка, чи modelId коректний",
+							"        if (!modelId || isNaN(modelId)) {",
+							"            throw new Error(\"modelId має некоректне значення: \" + modelId);",
+							"        }",
+							"        pm.collectionVariables.set(\"modelId\", modelId);",
+							"        console.log(`Вибрана модель: ${model.title} (ID: ${modelId})`);",
+							"    });",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/cars/models",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars",
+						"models"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CREATE_CAR",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Отримуємо дані відповіді API",
+							"let jsonData = pm.response.json();",
+							"",
+							"// Переконуємося, що авто створене",
+							"pm.test(\"Car successfully created\", function () {",
+							"    pm.expect(pm.response.code).to.equal(201);",
+							"    pm.expect(jsonData.data).to.have.property(\"id\");",
+							"});",
+							"// Збереження значень авто",
+							"pm.collectionVariables.set(\"createdCarId\", jsonData.data.id);",
+							"pm.collectionVariables.set(\"createdBrandId\", jsonData.data.carBrandId);",
+							"pm.collectionVariables.set(\"createdModelId\", jsonData.data.carModelId); ",
+							"pm.collectionVariables.set(\"createdMileage\", jsonData.data.mileage);",
+							"",
+							"let expectedCarId = pm.collectionVariables.get(\"createdCarId\");",
+							"let expectedBrandId = pm.collectionVariables.get(\"createdBrandId\");",
+							"let expectedModelId = pm.collectionVariables.get(\"createdModelId\");",
+							"let expectedMileage = pm.collectionVariables.get(\"createdMileage\");",
+							"",
+							"pm.test(`Car ID matches request |Expected: ${expectedCarId}, |Received: ${jsonData.data.id}`, function () {",
+							"    pm.expect(jsonData.data.id).to.equal(parseInt(expectedCarId));",
+							"});",
+							"// Переконуємося, що передані `brandId` і `modelId` співпадають із відповіддю API",
+							"pm.test(`Brand ID matches request |Expected: ${expectedBrandId}, |Received: ${jsonData.data.carBrandId}`, function () {",
+							"    pm.expect(jsonData.data.carBrandId).to.equal(parseInt(expectedBrandId));",
+							"});",
+							"pm.test(`Model ID matches request |Expected: ${expectedModelId}, |Received: ${jsonData.data.carModelId}`, function () {",
+							"    pm.expect(jsonData.data.carModelId).to.equal(parseInt(expectedModelId));",
+							"});",
+							"// Переконуємося, що пробіг збережено правильно",
+							"pm.test(`Mileage matches request |Expected: ${expectedMileage}, |Received: ${jsonData.data.mileage}`, function () {",
+							"    pm.expect(jsonData.data.mileage).to.equal(parseInt(expectedMileage));",
+							"});",
+							"// Переконуємося, що `brand` і `model` повертаються як рядки",
+							"pm.test(`Brand & Model names: Brand: ${jsonData.data.brand}, Model: ${jsonData.data.model}`, function () {",
+							"    pm.expect(jsonData.data.brand).to.be.a(\"string\");",
+							"    pm.expect(jsonData.data.model).to.be.a(\"string\");",
+							"});",
+							"// Збереження carId для подальших запитів",
+							"pm.collectionVariables.set(\"carId\", jsonData.data.id);"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"let brandId = pm.collectionVariables.get(\"carBrandId\");",
+							"let modelId = pm.collectionVariables.get(\"carModelId\");",
+							"",
+							"if (!brandId || !modelId) {",
+							"    throw new Error(\"Відсутні `brandId` або `modelId`. Виконайте попередні кроки.\");",
+							"}",
+							"",
+							"let mileage = Math.floor(Math.random() * (300000 - 1000 + 1)) + 1000;",
+							"pm.collectionVariables.set(\"mileage\", mileage);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"content-type": true
+				}
+			},
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"carBrandId\": {{carBrandId}},\n    \"carModelId\": {{carModelId}},\n    \"mileage\": {{mileage}}\n}"
+				},
+				"url": {
+					"raw": "{{URL}}/cars",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET_USER_ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"let jsonData = pm.response.json();",
+							"console.log(\"Отриманий профіль користувача:\", jsonData);",
+							"",
+							"// Очікувані значення (беремо з колекційних змінних або ставимо дефолтні)",
+							"let expectedName = pm.collectionVariables.get(\"userName\") || \"ExpectedNameNotSet\";",
+							"let expectedLastName = pm.collectionVariables.get(\"userLastName\") || \"ExpectedLastNameNotSet\";",
+							"",
+							"pm.test(`Name matches expected value | Received: ${jsonData.data.name} | Expected: ${expectedName}`, function () {",
+							"    pm.expect(jsonData.data.name).to.equal(expectedName);",
+							"    console.log(`Name: ${jsonData.data.name} (Expected: ${expectedName})`);",
+							"});",
+							"pm.test(`Last name matches expected value | Received: ${jsonData.data.lastName} | Expected: ${expectedLastName}`, function () {",
+							"    pm.expect(jsonData.data.lastName).to.equal(expectedLastName);",
+							"    console.log(`Last Name: ${jsonData.data.lastName} (Expected: ${expectedLastName})`);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{URL}}/users/profile",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"users",
+						"profile"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET_Cars_id",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Отримуємо дані відповіді API",
+							"let jsonData = pm.response.json();",
+							"",
+							"// Отримуємо збережені очікувані значення",
+							"let expectedCarId = pm.collectionVariables.get(\"createdCarId\");",
+							"let expectedBrandId = pm.collectionVariables.get(\"createdBrandId\");",
+							"let expectedModelId = pm.collectionVariables.get(\"createdModelId\");",
+							"let expectedMileage = pm.collectionVariables.get(\"createdMileage\");",
+							"",
+							"// Переконуємося, що авто знайдено",
+							"pm.test(\"Car successfully retrieved\", function () {",
+							"    pm.expect(pm.response.code).to.equal(200);",
+							"    pm.expect(jsonData.data).to.have.property(\"id\");",
+							"});",
+							"// Перевіряємо, що отримані значення збігаються з очікуваними",
+							"pm.test(`Car ID matches request |Expected: ${expectedCarId}, |Received: ${jsonData.data.id}`, function () {",
+							"    pm.expect(jsonData.data.id).to.equal(parseInt(expectedCarId));",
+							"});",
+							"pm.test(`Brand ID matches request |Expected: ${expectedBrandId}, |Received: ${jsonData.data.carBrandId}`, function () {",
+							"    pm.expect(jsonData.data.carBrandId).to.equal(parseInt(expectedBrandId));",
+							"});",
+							"pm.test(`Model ID matches request |Expected: ${expectedModelId}, |Received: ${jsonData.data.carModelId}`, function () {",
+							"    pm.expect(jsonData.data.carModelId).to.equal(parseInt(expectedModelId));",
+							"});",
+							"pm.test(`Mileage matches request |Expected: ${expectedMileage}, |Received: ${jsonData.data.mileage}`, function () {",
+							"    pm.expect(jsonData.data.mileage).to.equal(parseInt(expectedMileage));",
+							"});",
+							"// Переконуємося, що `brand` і `model` повертаються як рядки",
+							"pm.test(`Brand & Model names: Brand: ${jsonData.data.brand}, Model: ${jsonData.data.model}`, function () {",
+							"    pm.expect(jsonData.data.brand).to.be.a(\"string\");",
+							"    pm.expect(jsonData.data.model).to.be.a(\"string\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"let createdCarId = pm.collectionVariables.get(\"createdCarId\");",
+							"if (!createdCarId) {",
+							"    throw new Error(\"createdCarId не знайдено! Спочатку виконайте `CREATE_CAR`.\");",
+							"}",
+							"// Чекаємо 1 секунду перед виконанням запиту (уникнення 404)",
+							"console.log(`Очікуємо 1 секунду перед GET_Cars_id для авто ID: ${createdCarId}`);",
+							"setTimeout(() => {",
+							"    console.log(\"Продовжуємо виконання GET_Cars_id.\");",
+							"}, 2000);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/cars/{{createdCarId}}",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"cars",
+						"{{createdCarId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DELETE_USER_FINISH",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"User account was successfully deleted\", function () {",
+							"    pm.expect(pm.response.code).to.equal(200);",
+							"    pm.collectionVariables.clear(); // Очистити всі змінні",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{URL}}/users",
+					"host": [
+						"{{URL}}"
+					],
+					"path": [
+						"users"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
